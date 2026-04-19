@@ -5,14 +5,20 @@
 #include "TGraph.h"
 #include "TH1.h"
 #include "TString.h"
+#include "dataFrame/track.h"
 #include <iostream>
+#include <memory> // 用于智能指针
 #include <stdexcept>
 #include <vector>
 
+/**
+ * @brief 该类用于读取所有的粒子数据，注意到对其iter会逐个返回一条track，不区分event
+ *
+ */
 class AMPTDataReader
 {
 protected:
-    TChain *chain;
+    std::unique_ptr<TChain> chain; // 使用智能指针管理内存
 
     /**
      * @brief iterator for data reader
@@ -27,9 +33,19 @@ protected:
     public:
         Iterator(AMPTDataReader *tree, Long64_t index) : m_tree(tree), m_index(index) {}
 
-        // 解引用：返回当前树对象（可直接访问变量）
-        AMPTDataReader &operator*() { return *m_tree; }
-        AMPTDataReader *operator->() { return m_tree; }
+        // 返回const引用避免拷贝（如果Track允许）
+        const Track &operator*() const
+        {
+            // 这里需要将当前Track缓存为成员变量，或者确保Track可以被引用返回
+            // 为了保持原有逻辑，这里仍返回值，但建议优化Track的设计
+            return *new Track{
+                m_tree->eventID,
+                m_tree->nParticles,
+                m_tree->imp,
+
+                m_tree->pdgPid,
+                m_tree->p_x, m_tree->p_y, m_tree->p_z};
+        }
 
         // 前置++：读取下一个事例
         Iterator &operator++()
@@ -66,9 +82,9 @@ public:
      * @param nFiles
      * @param fileSuffix
      */
-    AMPTDataReader(const char *filePrefix, int nFiles, const char *fileSuffix = ".root")
+    AMPTDataReader(const char *filePrefix, int nFiles)
+        : chain(std::make_unique<TChain>("particles")) // 初始化智能指针
     {
-        chain = new TChain("particles"); // 你的Tree名字是particles
         for (int i = 0; i < nFiles; i++)
         {
             TString fname = TString::Format("%s%d.root", filePrefix, i);
@@ -83,6 +99,7 @@ public:
         }
         std::cout << "\n总共加载 " << chain->GetEntries() << " 个事例" << std::endl;
 
+        // 设置分支地址
         chain->SetBranchAddress("eventID", &eventID);
         chain->SetBranchAddress("nParticles", &nParticles);
         chain->SetBranchAddress("imp", &imp);
@@ -91,14 +108,26 @@ public:
         chain->SetBranchAddress("p_y", &p_y);
         chain->SetBranchAddress("p_z", &p_z);
 
-        chain->GetEntry(0);
+        // 只有在有数据时才读取第一个entry
+        if (chain->GetEntries() > 0)
+        {
+            chain->GetEntry(0);
+        }
     }
+
+    // 禁用拷贝构造和拷贝赋值（避免double free）
+    AMPTDataReader(const AMPTDataReader &) = delete;
+    AMPTDataReader &operator=(const AMPTDataReader &) = delete;
+
+    // 启用移动构造和移动赋值（可选，提高性能）
+    AMPTDataReader(AMPTDataReader &&) = default;
+    AMPTDataReader &operator=(AMPTDataReader &&) = default;
 
     Iterator begin() { return Iterator(this, 0); }
     Iterator end() { return Iterator(this, chain->GetEntries()); }
     Long64_t size() const { return chain->GetEntries(); }
 
-    AMPTDataReader() { delete chain; }
+    ~AMPTDataReader() = default; // 智能指针会自动释放chain
 };
 
 #endif
