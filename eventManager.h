@@ -1,3 +1,24 @@
+/**
+ * @file eventManager.h
+ * @author huinaibing
+ * @brief 用于将track按event分类
+ * @version 0.1
+ * @date 2026-04-21
+ * @example
+ *    AMPTEventReader cent_30_40("/home/huinaibing/ampt_result/cent30-40/Result/ampt_19367451_", 100);
+ *    for (const auto &evt : cent_30_40)
+      {
+        gfw->Clear();
+        for (const auto &trk : evt.particles)
+        {
+            gfw->Fill(trk.GetEta(), 0, trk.GetPhi(), 1, 1);
+        }
+    }
+ *
+ * @copyright Copyright (c) 2026
+ *
+ */
+
 #ifndef EVENTMANAGER
 #define EVENTMANAGER
 #include "dataFrame/event.h"
@@ -9,8 +30,8 @@
 class AMPTEventReader
 {
 private:
-    AMPTDataReader *fReader;    // 用智能指针管理AMPTDataReader
-    std::vector<Event> fEvents; // 直接用vector对象，避免指针管理
+    std::unique_ptr<AMPTDataReader> fReader;
+    std::vector<Event> fEvents;
 
 public:
     class Iterator
@@ -33,9 +54,8 @@ public:
         bool operator!=(const Iterator &other) const { return m_index != other.m_index; }
     };
 
-    AMPTEventReader(const char *filePrefix, int nFiles)
+    AMPTEventReader(const char *filePrefix, int nFiles) : fReader(std::make_unique<AMPTDataReader>(filePrefix, nFiles)) // 初始化智能指针
     {
-        this->fReader = new AMPTDataReader(filePrefix, nFiles);
         int eventTmpId = -1;
         for (const auto &track : *fReader)
         {
@@ -62,7 +82,11 @@ public:
         }
     }
 
-    // 补充GetEvent实现（返回const引用更高效）
+    AMPTEventReader(const AMPTEventReader &) = delete;
+    AMPTEventReader &operator=(const AMPTEventReader &) = delete;
+    AMPTEventReader(AMPTEventReader &&) = default;
+    AMPTEventReader &operator=(AMPTEventReader &&) = default;
+
     const Event &GetEvent(size_t m_index) const
     {
         if (m_index >= fEvents.size())
@@ -76,7 +100,5 @@ public:
     Iterator begin() { return Iterator(this, 0); }
     Iterator end() { return Iterator(this, fEvents.size()); }
     size_t size() const { return fEvents.size(); }
-
-    // 不需要显式析构函数，智能指针和vector会自动管理内存
 };
 #endif
