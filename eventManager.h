@@ -76,7 +76,6 @@ public:
         eventTmpId = 0;
         for (auto &evt : this->fEvents)
         {
-            evt.nParticles = evt.particles.size();
             evt.imp = evt.particles.back().imp;
             evt.eventID = eventTmpId++;
         }

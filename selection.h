@@ -21,4 +21,16 @@ bool particleSelected(const Track &trk)
     return true;
 }
 
+bool cut4Pt(const Track &trk)
+{
+    if (TMath::Abs(trk.GetEta()) > 0.4)
+        return false;
+    if (trk.GetPt() > 3)
+        return false;
+    if (trk.GetPt() < 0.2)
+        return false;
+
+    return true;
+}
+
 #endif

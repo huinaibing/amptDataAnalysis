@@ -130,13 +130,13 @@ void calculate_v2_charged()
                 CF(CorrType::Ref0Gap24, fFCCh, "c24");
                 CF(CorrType::Ref0Gap22, fFCCh, "c22Full");
 
-                CalculateCovV2ChargedPt(gfw, mgr, CorrType::Ref08Gap22, fFCCh, evt, cfg.bin_val, rndm);
-                CalculateC22TrackWeight(gfw, mgr, CorrType::Ref08Gap22, fFCCh, evt, cfg.bin_val, rndm);
+                CalculateCovV2ChargedPt(gfw, mgr, CorrType::Ref08Gap22, fFCCh, evt, cfg.bin_val, cut4Pt, rndm);
+                CalculateC22TrackWeight(gfw, mgr, CorrType::Ref08Gap22, fFCCh, evt, cfg.bin_val, cut4Pt, rndm);
 
-                if (evt.nParticles)
+                if (evt.nParticlesAfterCut(cut4Pt))
                 {
-                    fFCCh->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(), evt.nParticles, rndm);
-                    fFCCh->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(), evt.nParticles, rndm);
+                    fFCCh->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4Pt), evt.nParticlesAfterCut(cut4Pt), rndm);
+                    fFCCh->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4Pt), evt.nParticlesAfterCut(cut4Pt), rndm);
                 }
             } // end charged flow calculation
 
@@ -153,13 +153,16 @@ void calculate_v2_charged()
                 CF(CorrType::Pion0Gap24a, fFCPi, "c24");
                 CF(CorrType::Pion0Gap24b, fFCPi, "c24");
 
-                CalculateCovV2ChargedPt(gfw, mgr, CorrType::PiPi08Gap22, fFCPi, evt, cfg.bin_val, rndm);
-                CalculateC22TrackWeight(gfw, mgr, CorrType::PiPi08Gap22, fFCPi, evt, cfg.bin_val, rndm);
+                CalculateCovV2ChargedPt(gfw, mgr, CorrType::PiPi08Gap22, fFCPi, evt, cfg.bin_val, cut4Pt, rndm);
+                CalculateC22TrackWeight(gfw, mgr, CorrType::PiPi08Gap22, fFCPi, evt, cfg.bin_val, cut4Pt, rndm);
 
-                if (evt.nPidParticles(PDG_t::kPiPlus))
+                std::function<bool(const Track &)> cut4PtPi = [](const Track &trk)
+                { if(cut4Pt(trk)) if(TMath::Abs(trk.pdgPid) == PDG_t::kPiPlus) return true; return false; };
+
+                if (evt.nParticlesAfterCut(cut4PtPi))
                 {
-                    fFCPi->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(PDG_t::kPiPlus), evt.nPidParticles(PDG_t::kPiPlus), rndm);
-                    fFCPi->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(PDG_t::kPiPlus), evt.nPidParticles(PDG_t::kPiPlus), rndm);
+                    fFCPi->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPi), evt.nParticlesAfterCut(cut4PtPi), rndm);
+                    fFCPi->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPi), evt.nParticlesAfterCut(cut4PtPi), rndm);
                 }
             }
             // end pion
@@ -177,13 +180,19 @@ void calculate_v2_charged()
                 CF(CorrType::Kaon0Gap24a, fFCKa, "c24");
                 CF(CorrType::Kaon0Gap24b, fFCKa, "c24");
 
-                CalculateCovV2ChargedPt(gfw, mgr, CorrType::KaKa08Gap22, fFCKa, evt, cfg.bin_val, rndm);
-                CalculateC22TrackWeight(gfw, mgr, CorrType::KaKa08Gap22, fFCKa, evt, cfg.bin_val, rndm);
+                // ✅ 更新1：加上 cut4Pt 参数
+                CalculateCovV2ChargedPt(gfw, mgr, CorrType::KaKa08Gap22, fFCKa, evt, cfg.bin_val, cut4Pt, rndm);
+                CalculateC22TrackWeight(gfw, mgr, CorrType::KaKa08Gap22, fFCKa, evt, cfg.bin_val, cut4Pt, rndm);
 
-                if (evt.nPidParticles(PDG_t::kKPlus))
+                // ✅ 更新2：定义 Kaon 专用的筛选函数
+                std::function<bool(const Track &)> cut4PtKa = [](const Track &trk)
+                { if(cut4Pt(trk)) if(TMath::Abs(trk.pdgPid) == PDG_t::kKPlus) return true; return false; };
+
+                // ✅ 更新3：统一使用 nParticlesAfterCut 和 GetMeanPt(cut4PtKa)
+                if (evt.nParticlesAfterCut(cut4PtKa))
                 {
-                    fFCKa->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(PDG_t::kKPlus), evt.nPidParticles(PDG_t::kKPlus), rndm);
-                    fFCKa->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(PDG_t::kKPlus), evt.nPidParticles(PDG_t::kKPlus), rndm);
+                    fFCKa->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtKa), evt.nParticlesAfterCut(cut4PtKa), rndm);
+                    fFCKa->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtKa), evt.nParticlesAfterCut(cut4PtKa), rndm);
                 }
             }
             // end kaon
@@ -201,13 +210,19 @@ void calculate_v2_charged()
                 CF(CorrType::Prot0Gap24a, fFCPr, "c24");
                 CF(CorrType::Prot0Gap24b, fFCPr, "c24");
 
-                CalculateCovV2ChargedPt(gfw, mgr, CorrType::PrPr08Gap22, fFCPr, evt, cfg.bin_val, rndm);
-                CalculateC22TrackWeight(gfw, mgr, CorrType::PrPr08Gap22, fFCPr, evt, cfg.bin_val, rndm);
+                // ✅ 更新1：加上 cut4Pt 参数
+                CalculateCovV2ChargedPt(gfw, mgr, CorrType::PrPr08Gap22, fFCPr, evt, cfg.bin_val, cut4Pt, rndm);
+                CalculateC22TrackWeight(gfw, mgr, CorrType::PrPr08Gap22, fFCPr, evt, cfg.bin_val, cut4Pt, rndm);
 
-                if (evt.nPidParticles(PDG_t::kProton))
+                // ✅ 更新2：定义 Proton 专用的筛选函数
+                std::function<bool(const Track &)> cut4PtPr = [](const Track &trk)
+                { if(cut4Pt(trk)) if(TMath::Abs(trk.pdgPid) == PDG_t::kProton) return true; return false; };
+
+                // ✅ 更新3：统一使用 nParticlesAfterCut 和 GetMeanPt(cut4PtPr)
+                if (evt.nParticlesAfterCut(cut4PtPr))
                 {
-                    fFCPr->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(PDG_t::kProton), evt.nPidParticles(PDG_t::kProton), rndm);
-                    fFCPr->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(PDG_t::kProton), evt.nPidParticles(PDG_t::kProton), rndm);
+                    fFCPr->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPr), evt.nParticlesAfterCut(cut4PtPr), rndm);
+                    fFCPr->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPr), evt.nParticlesAfterCut(cut4PtPr), rndm);
                 }
             }
             // end proton
@@ -218,6 +233,8 @@ void calculate_v2_charged()
 
 #pragma region // save to file
     TFile *outputAnalysisResult = new TFile("myAnalysisResult.root", "RECREATE");
+    outputAnalysisResult->mkdir("pid-flow-pt-corr");
+    outputAnalysisResult->cd("pid-flow-pt-corr");
     fFCCh->Write();
     fFCPi->Write();
     fFCKa->Write();

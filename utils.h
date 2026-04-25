@@ -46,6 +46,7 @@ void CalculateCovV2ChargedPt(
     FlowContainer *fOut,
     const Event &evt,
     double bin_val,
+    std::function<bool(const Track &)> customCut,
     float rndm)
 {
     double cum = gfw->Calculate(mgr.Get(cfg), 0, false).real();
@@ -55,7 +56,7 @@ void CalculateCovV2ChargedPt(
 
     double val = cum / npair;
 
-    fOut->FillProfile("covV2Pt", bin_val, val * evt.GetMeanPt(), npair * evt.nParticles, rndm);
+    fOut->FillProfile("covV2Pt", bin_val, val * evt.GetMeanPt(customCut), npair * evt.nParticlesAfterCut(customCut), rndm);
 }
 
 void CalculateC22TrackWeight(
@@ -65,13 +66,14 @@ void CalculateC22TrackWeight(
     FlowContainer *fOut,
     const Event &evt,
     double bin_val,
+    std::function<bool(const Track &)> customCut,
     float rndm)
 {
     double cum = gfw->Calculate(mgr.Get(cfg), 0, false).real();
     double npair = gfw->Calculate(mgr.Get(cfg), 0, true).real();
     if (npair != 0)
     {
-        fOut->FillProfile("c22TrackWeight", bin_val, cum / npair, npair * evt.nParticles, rndm);
+        fOut->FillProfile("c22TrackWeight", bin_val, cum / npair, npair * evt.nParticlesAfterCut(customCut), rndm);
     }
 }
 

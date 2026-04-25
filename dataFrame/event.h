@@ -8,40 +8,28 @@
 struct Event
 {
     int eventID;
-    int nParticles;
     double imp;
 
     std::vector<Track> particles;
 
-    double GetMeanPt() const
+    double GetMeanPt(std::function<bool(const Track &)> customCut) const
     {
         double meanPt = 0;
         for (const auto &track : this->particles)
         {
-            meanPt += track.GetPt();
-        }
-
-        return meanPt / this->nParticles;
-    }
-
-    double GetMeanPt(int pdgCode) const
-    {
-        double meanPt = 0;
-        for (const auto &track : this->particles)
-        {
-            if (TMath::Abs(track.pdgPid) == pdgCode)
+            if (customCut(track))
                 meanPt += track.GetPt();
         }
 
-        return meanPt / this->nPidParticles(pdgCode);
+        return meanPt / this->nParticlesAfterCut(customCut);
     }
 
-    int nPidParticles(int pdgCode) const
+    int nParticlesAfterCut(std::function<bool(const Track &)> customCut) const
     {
         int nPid = 0;
         for (const auto &track : this->particles)
         {
-            if (TMath::Abs(track.pdgPid) == pdgCode)
+            if (customCut(track))
             {
                 nPid++;
             }
