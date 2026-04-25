@@ -34,15 +34,12 @@ protected:
         Iterator(AMPTDataReader *tree, Long64_t index) : m_tree(tree), m_index(index) {}
 
         // 返回const引用避免拷贝（如果Track允许）
-        const Track &operator*() const
+        Track operator*() const
         {
-            // 这里需要将当前Track缓存为成员变量，或者确保Track可以被引用返回
-            // 为了保持原有逻辑，这里仍返回值，但建议优化Track的设计
-            return *new Track{
+            return {
                 m_tree->eventID,
                 m_tree->nParticles,
                 m_tree->imp,
-
                 m_tree->pdgPid,
                 m_tree->p_x, m_tree->p_y, m_tree->p_z};
         }

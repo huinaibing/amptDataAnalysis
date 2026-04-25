@@ -104,6 +104,17 @@ struct CorrMeta
     int harmonic; // 阶数 (2, 3)
 };
 
+struct Mask
+{
+    static constexpr int kRef = 1 << 0;           // 1
+    static constexpr int kPion = 1 << 1;          // 2
+    static constexpr int kKaon = 1 << 2;          // 4
+    static constexpr int kProton = 1 << 3;        // 8
+    static constexpr int kPionOverlap = 1 << 4;   // 16
+    static constexpr int kKaonOverlap = 1 << 5;   // 32
+    static constexpr int kProtonOverlap = 1 << 6; // 64
+};
+
 // ==================== 3. 管理器类 (核心) ====================
 class CorrConfigManager
 {
@@ -161,47 +172,46 @@ private:
     std::vector<CorrMeta> m_metas;
     std::unordered_map<std::string, size_t> m_name_to_index;
 
-    // ==================== 私有：初始化 Regions (对应你原来的 initRegion) ====================
     void InitRegions(double etaGap, double etaMax)
     {
-        m_gfw->AddRegion("reffull", -etaMax, etaMax, 1, 1);
-        m_gfw->AddRegion("refN08", -etaMax, -etaGap, 1, 1);
-        m_gfw->AddRegion("refP08", etaGap, etaMax, 1, 1);
-        m_gfw->AddRegion("refN", -etaMax, 0, 1, 1);
-        m_gfw->AddRegion("refP", 0, etaMax, 1, 1);
+        // --- Reference ---
+        m_gfw->AddRegion("reffull", -etaMax, etaMax, 1, Mask::kRef);
+        m_gfw->AddRegion("refN08", -etaMax, -etaGap, 1, Mask::kRef);
+        m_gfw->AddRegion("refP08", etaGap, etaMax, 1, Mask::kRef);
+        m_gfw->AddRegion("refN", -etaMax, 0, 1, Mask::kRef);
+        m_gfw->AddRegion("refP", 0, etaMax, 1, Mask::kRef);
 
-        // Pions (bit 2)
-        m_gfw->AddRegion("poiPiN08", -etaMax, -etaGap, 1, 2);
-        m_gfw->AddRegion("poiPiP08", etaGap, etaMax, 1, 2);
-        m_gfw->AddRegion("poiPiN", -etaMax, 0, 1, 2);
-        m_gfw->AddRegion("poiPiP", 0, etaMax, 1, 2);
+        // --- Pions ---
+        m_gfw->AddRegion("poiPiN08", -etaMax, -etaGap, 1, Mask::kPion);
+        m_gfw->AddRegion("poiPiP08", etaGap, etaMax, 1, Mask::kPion);
+        m_gfw->AddRegion("poiPiN", -etaMax, 0, 1, Mask::kPion);
+        m_gfw->AddRegion("poiPiP", 0, etaMax, 1, Mask::kPion);
 
-        // Overlap Pions (bit 16)
-        m_gfw->AddRegion("olPiN", -etaMax, 0, 1, 16);
-        m_gfw->AddRegion("olPiP", 0, etaMax, 1, 16);
+        // --- Overlap Pions ---
+        m_gfw->AddRegion("olPiN", -etaMax, 0, 1, Mask::kPionOverlap);
+        m_gfw->AddRegion("olPiP", 0, etaMax, 1, Mask::kPionOverlap);
 
-        // Kaons (bit 4)
-        m_gfw->AddRegion("poiKaN08", -etaMax, -etaGap, 1, 4);
-        m_gfw->AddRegion("poiKaP08", etaGap, etaMax, 1, 4);
-        m_gfw->AddRegion("poiKaN", -etaMax, 0, 1, 4);
-        m_gfw->AddRegion("poiKaP", 0, etaMax, 1, 4);
+        // --- Kaons ---
+        m_gfw->AddRegion("poiKaN08", -etaMax, -etaGap, 1, Mask::kKaon);
+        m_gfw->AddRegion("poiKaP08", etaGap, etaMax, 1, Mask::kKaon);
+        m_gfw->AddRegion("poiKaN", -etaMax, 0, 1, Mask::kKaon);
+        m_gfw->AddRegion("poiKaP", 0, etaMax, 1, Mask::kKaon);
 
-        // Overlap Kaons (bit 32)
-        m_gfw->AddRegion("olKaN", -etaMax, 0, 1, 32);
-        m_gfw->AddRegion("olKaP", 0, etaMax, 1, 32);
+        // --- Overlap Kaons ---
+        m_gfw->AddRegion("olKaN", -etaMax, 0, 1, Mask::kKaonOverlap);
+        m_gfw->AddRegion("olKaP", 0, etaMax, 1, Mask::kKaonOverlap);
 
-        // Protons (bit 8)
-        m_gfw->AddRegion("poiPrN08", -etaMax, -etaGap, 1, 8);
-        m_gfw->AddRegion("poiPrP08", etaGap, etaMax, 1, 8);
-        m_gfw->AddRegion("poiPrN", -etaMax, 0, 1, 8);
-        m_gfw->AddRegion("poiPrP", 0, etaMax, 1, 8);
+        // --- Protons ---
+        m_gfw->AddRegion("poiPrN08", -etaMax, -etaGap, 1, Mask::kProton);
+        m_gfw->AddRegion("poiPrP08", etaGap, etaMax, 1, Mask::kProton);
+        m_gfw->AddRegion("poiPrN", -etaMax, 0, 1, Mask::kProton);
+        m_gfw->AddRegion("poiPrP", 0, etaMax, 1, Mask::kProton);
 
-        // Overlap Protons (bit 64)
-        m_gfw->AddRegion("olPrN", -etaMax, 0, 1, 64);
-        m_gfw->AddRegion("olPrP", 0, etaMax, 1, 64);
+        // --- Overlap Protons ---
+        m_gfw->AddRegion("olPrN", -etaMax, 0, 1, Mask::kProtonOverlap);
+        m_gfw->AddRegion("olPrP", 0, etaMax, 1, Mask::kProtonOverlap);
     }
 
-    // ==================== 私有：初始化 Configs (对应你原来的 initCorrelatorConfig) ====================
     void InitConfigs()
     {
         // 在这里集中定义所有 41 个配置！
