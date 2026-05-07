@@ -21,7 +21,10 @@ struct Event
                 meanPt += track.GetPt();
         }
 
-        return meanPt / this->nParticlesAfterCut(customCut);
+        double nParticles = this->nParticlesAfterCut(customCut);
+        if (nParticles == 0)
+            return 0;
+        return meanPt / nParticles;
     }
 
     int nParticlesAfterCut(std::function<bool(const Track &)> customCut) const
@@ -35,6 +38,23 @@ struct Event
             }
         }
         return nPid;
+    }
+
+    double GetPtSquareAve(std::function<bool(const Track &)> customCut) const
+    {
+        double nParticles = this->nParticlesAfterCut(customCut);
+        if (nParticles == 0 || nParticles == 1)
+            return 0;
+        double ptSum = this->GetMeanPt(customCut) * nParticles;
+
+        double ptSquareSum = 0;
+        for (const auto &track : this->particles)
+        {
+            if (customCut(track))
+                ptSquareSum += track.GetPt() * track.GetPt();
+        }
+
+        return (ptSum * ptSum - ptSquareSum) / (nParticles * nParticles - nParticles);
     }
 };
 

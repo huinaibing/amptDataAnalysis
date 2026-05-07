@@ -21,10 +21,22 @@ using namespace o2::framework::expressions;
  *
  */
 std::vector<CentralityConfig> cent_configs = {
-    {"/home/huinaibing/ampt_result/cent50-60/Result/ampt_19370820_", 55, 100},
-    {"/home/huinaibing/ampt_result/cent40-50/Result/ampt_19369195_", 45, 100},
-    {"/home/huinaibing/ampt_result/cent30-40/Result/ampt_19367451_", 35, 100},
-    {"/home/huinaibing/ampt_result/cent20_30/Result/ampt_19343841_", 25, 100},
+    {"/home/huinaibing/ampt_result/cent50-60/Result2/ampt_19554087_", 55, 100},
+    {"/home/huinaibing/ampt_result/cent50-60/Result1/ampt_19370820_", 55, 100},
+    {"/home/huinaibing/ampt_result/cent50-60/Result/ampt_19557047_", 55, 100},
+
+    {"/home/huinaibing/ampt_result/cent40-50/Result2/ampt_19575013_", 45, 100},
+    {"/home/huinaibing/ampt_result/cent40-50/Result1/ampt_19369195_", 45, 100},
+    {"/home/huinaibing/ampt_result/cent40-50/Result/ampt_19576631_", 45, 100},
+
+    {"/home/huinaibing/ampt_result/cent30-40/Result3/ampt_19588435_", 35, 100},
+    {"/home/huinaibing/ampt_result/cent30-40/Result2/ampt_19577694_", 35, 100},
+    {"/home/huinaibing/ampt_result/cent30-40/Result1/ampt_19367451_", 35, 100},
+    {"/home/huinaibing/ampt_result/cent30-40/Result/ampt_19591177_", 35, 100},
+
+    {"/home/huinaibing/ampt_result/cent20_30/Result1/ampt_19343841_", 25, 100},
+    {"/home/huinaibing/ampt_result/cent20_30/Result/ampt_19591426_", 25, 100},
+
     {"/home/huinaibing/ampt_result/Result0-10_4/ampt_16824297_", 5, 100},
     {"/home/huinaibing/ampt_result/Result0-10_3/ampt_16752378_", 5, 100},
     {"/home/huinaibing/ampt_result/Result0-10_2/ampt_16741210_", 5, 100},
@@ -82,6 +94,8 @@ void calculate_v2_charged()
     TObjArray *oba4PID = reinterpret_cast<TObjArray *>(oba4Ch->Clone());
     oba4PID->Add(new TNamed("c22pure", "c22pure"));
     oba4PID->Add(new TNamed("c32pure", "c32pure"));
+    oba4PID->Add(new TNamed("covV2PtPID", "covV2PtPID"));
+    oba4PID->Add(new TNamed("c22TrackWeightPID", "c22TrackWeightPID"));
 
     fFCPi->SetName("FlowContainerPi");
     fFCPi->Initialize(oba4PID, axisMultiplicity, cfgFlowNbootstrap);
@@ -133,10 +147,12 @@ void calculate_v2_charged()
                 CalculateCovV2ChargedPt(gfw, mgr, CorrType::Ref08Gap22, fFCCh, evt, cfg.bin_val, cut4Pt, rndm);
                 CalculateC22TrackWeight(gfw, mgr, CorrType::Ref08Gap22, fFCCh, evt, cfg.bin_val, cut4Pt, rndm);
 
-                if (evt.nParticlesAfterCut(cut4Pt))
+                double nParticlesCh = evt.nParticlesAfterCut(cut4Pt);
+                if (nParticlesCh)
                 {
-                    fFCCh->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4Pt), evt.nParticlesAfterCut(cut4Pt), rndm);
-                    fFCCh->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4Pt), evt.nParticlesAfterCut(cut4Pt), rndm);
+                    fFCCh->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4Pt), nParticlesCh, rndm);
+                    fFCCh->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4Pt), nParticlesCh, rndm);
+                    fFCCh->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4Pt), nParticlesCh * nParticlesCh - nParticlesCh, rndm);
                 }
             } // end charged flow calculation
 
@@ -159,10 +175,15 @@ void calculate_v2_charged()
                 std::function<bool(const Track &)> cut4PtPi = [](const Track &trk)
                 { if(cut4Pt(trk)) if(TMath::Abs(trk.pdgPid) == PDG_t::kPiPlus) return true; return false; };
 
-                if (evt.nParticlesAfterCut(cut4PtPi))
+                CalculateCovV2ChargedPt(gfw, mgr, CorrType::PiPi08Gap22, fFCPi, evt, cfg.bin_val, cut4PtPi, rndm, "covV2PtPID");
+                CalculateC22TrackWeight(gfw, mgr, CorrType::PiPi08Gap22, fFCPi, evt, cfg.bin_val, cut4PtPi, rndm, "c22TrackWeightPID");
+
+                double nParticlesPi = evt.nParticlesAfterCut(cut4PtPi);
+                if (nParticlesPi > 1)
                 {
-                    fFCPi->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPi), evt.nParticlesAfterCut(cut4PtPi), rndm);
-                    fFCPi->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPi), evt.nParticlesAfterCut(cut4PtPi), rndm);
+                    fFCPi->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPi), nParticlesPi, rndm);
+                    fFCPi->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPi), nParticlesPi, rndm);
+                    fFCPi->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPi), nParticlesPi * nParticlesPi - nParticlesPi, rndm);
                 }
             }
             // end pion
@@ -180,19 +201,21 @@ void calculate_v2_charged()
                 CF(CorrType::Kaon0Gap24a, fFCKa, "c24");
                 CF(CorrType::Kaon0Gap24b, fFCKa, "c24");
 
-                // ✅ 更新1：加上 cut4Pt 参数
                 CalculateCovV2ChargedPt(gfw, mgr, CorrType::KaKa08Gap22, fFCKa, evt, cfg.bin_val, cut4Pt, rndm);
                 CalculateC22TrackWeight(gfw, mgr, CorrType::KaKa08Gap22, fFCKa, evt, cfg.bin_val, cut4Pt, rndm);
 
-                // ✅ 更新2：定义 Kaon 专用的筛选函数
                 std::function<bool(const Track &)> cut4PtKa = [](const Track &trk)
                 { if(cut4Pt(trk)) if(TMath::Abs(trk.pdgPid) == PDG_t::kKPlus) return true; return false; };
 
-                // ✅ 更新3：统一使用 nParticlesAfterCut 和 GetMeanPt(cut4PtKa)
-                if (evt.nParticlesAfterCut(cut4PtKa))
+                CalculateCovV2ChargedPt(gfw, mgr, CorrType::KaKa08Gap22, fFCKa, evt, cfg.bin_val, cut4PtKa, rndm, "covV2PtPID");
+                CalculateC22TrackWeight(gfw, mgr, CorrType::KaKa08Gap22, fFCKa, evt, cfg.bin_val, cut4PtKa, rndm, "c22TrackWeightPID");
+
+                double nParticlesKa = evt.nParticlesAfterCut(cut4PtKa);
+                if (nParticlesKa > 1)
                 {
-                    fFCKa->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtKa), evt.nParticlesAfterCut(cut4PtKa), rndm);
-                    fFCKa->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtKa), evt.nParticlesAfterCut(cut4PtKa), rndm);
+                    fFCKa->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtKa), nParticlesKa, rndm);
+                    fFCKa->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtKa), nParticlesKa, rndm);
+                    fFCKa->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtKa), nParticlesKa * nParticlesKa - nParticlesKa, rndm);
                 }
             }
             // end kaon
@@ -210,19 +233,21 @@ void calculate_v2_charged()
                 CF(CorrType::Prot0Gap24a, fFCPr, "c24");
                 CF(CorrType::Prot0Gap24b, fFCPr, "c24");
 
-                // ✅ 更新1：加上 cut4Pt 参数
                 CalculateCovV2ChargedPt(gfw, mgr, CorrType::PrPr08Gap22, fFCPr, evt, cfg.bin_val, cut4Pt, rndm);
                 CalculateC22TrackWeight(gfw, mgr, CorrType::PrPr08Gap22, fFCPr, evt, cfg.bin_val, cut4Pt, rndm);
 
-                // ✅ 更新2：定义 Proton 专用的筛选函数
                 std::function<bool(const Track &)> cut4PtPr = [](const Track &trk)
                 { if(cut4Pt(trk)) if(TMath::Abs(trk.pdgPid) == PDG_t::kProton) return true; return false; };
 
-                // ✅ 更新3：统一使用 nParticlesAfterCut 和 GetMeanPt(cut4PtPr)
-                if (evt.nParticlesAfterCut(cut4PtPr))
+                CalculateCovV2ChargedPt(gfw, mgr, CorrType::PrPr08Gap22, fFCPr, evt, cfg.bin_val, cut4PtPr, rndm, "covV2PtPID");
+                CalculateC22TrackWeight(gfw, mgr, CorrType::PrPr08Gap22, fFCPr, evt, cfg.bin_val, cut4PtPr, rndm, "c22TrackWeightPID");
+
+                double nParticlesPr = evt.nParticlesAfterCut(cut4PtPr);
+                if (nParticlesPr > 1)
                 {
-                    fFCPr->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPr), evt.nParticlesAfterCut(cut4PtPr), rndm);
-                    fFCPr->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPr), evt.nParticlesAfterCut(cut4PtPr), rndm);
+                    fFCPr->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPr), nParticlesPr, rndm);
+                    fFCPr->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPr), nParticlesPr, rndm);
+                    fFCPr->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPr), nParticlesPr * nParticlesPr - nParticlesPr, rndm);
                 }
             }
             // end proton

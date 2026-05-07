@@ -47,7 +47,8 @@ void CalculateCovV2ChargedPt(
     const Event &evt,
     double bin_val,
     std::function<bool(const Track &)> customCut,
-    float rndm)
+    float rndm,
+    const char *profileName = "covV2Pt")
 {
     double cum = gfw->Calculate(mgr.Get(cfg), 0, false).real();
     double npair = gfw->Calculate(mgr.Get(cfg), 0, true).real();
@@ -56,7 +57,7 @@ void CalculateCovV2ChargedPt(
 
     double val = cum / npair;
 
-    fOut->FillProfile("covV2Pt", bin_val, val * evt.GetMeanPt(customCut), npair * evt.nParticlesAfterCut(customCut), rndm);
+    fOut->FillProfile(profileName, bin_val, val * evt.GetMeanPt(customCut), npair * evt.nParticlesAfterCut(customCut), rndm);
 }
 
 void CalculateC22TrackWeight(
@@ -67,13 +68,14 @@ void CalculateC22TrackWeight(
     const Event &evt,
     double bin_val,
     std::function<bool(const Track &)> customCut,
-    float rndm)
+    float rndm,
+    const char *profileName = "c22TrackWeight")
 {
     double cum = gfw->Calculate(mgr.Get(cfg), 0, false).real();
     double npair = gfw->Calculate(mgr.Get(cfg), 0, true).real();
     if (npair != 0)
     {
-        fOut->FillProfile("c22TrackWeight", bin_val, cum / npair, npair * evt.nParticlesAfterCut(customCut), rndm);
+        fOut->FillProfile(profileName, bin_val, cum / npair, npair * evt.nParticlesAfterCut(customCut), rndm);
     }
 }
 
