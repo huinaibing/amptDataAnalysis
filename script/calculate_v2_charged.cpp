@@ -20,27 +20,7 @@ using namespace o2::framework::expressions;
  * @details 格式 (path/to/file, centrality, file number)
  *
  */
-std::vector<CentralityConfig> cent_configs = {
-    {"/home/huinaibing/ampt_result/cent50-60/Result2/ampt_19554087_", 55, 100},
-    {"/home/huinaibing/ampt_result/cent50-60/Result1/ampt_19370820_", 55, 100},
-    {"/home/huinaibing/ampt_result/cent50-60/Result/ampt_19557047_", 55, 100},
-
-    {"/home/huinaibing/ampt_result/cent40-50/Result2/ampt_19575013_", 45, 100},
-    {"/home/huinaibing/ampt_result/cent40-50/Result1/ampt_19369195_", 45, 100},
-    {"/home/huinaibing/ampt_result/cent40-50/Result/ampt_19576631_", 45, 100},
-
-    {"/home/huinaibing/ampt_result/cent30-40/Result3/ampt_19588435_", 35, 100},
-    {"/home/huinaibing/ampt_result/cent30-40/Result2/ampt_19577694_", 35, 100},
-    {"/home/huinaibing/ampt_result/cent30-40/Result1/ampt_19367451_", 35, 100},
-    {"/home/huinaibing/ampt_result/cent30-40/Result/ampt_19591177_", 35, 100},
-
-    {"/home/huinaibing/ampt_result/cent20_30/Result1/ampt_19343841_", 25, 100},
-    {"/home/huinaibing/ampt_result/cent20_30/Result/ampt_19591426_", 25, 100},
-
-    {"/home/huinaibing/ampt_result/Result0-10_4/ampt_16824297_", 5, 100},
-    {"/home/huinaibing/ampt_result/Result0-10_3/ampt_16752378_", 5, 100},
-    {"/home/huinaibing/ampt_result/Result0-10_2/ampt_16741210_", 5, 100},
-    {"/home/huinaibing/ampt_result/Result0-10_1/ampt_16724824_", 5, 100}};
+std::vector<CentralityConfig> cent_configs = CentConfigReader::load("./cent_cfg.json");
 
 #define CF(cfg_type, out, name) CalculateAndFill(gfw, mgr, cfg_type, out, name, cfg.bin_val, rndm)
 
@@ -115,7 +95,7 @@ void calculate_v2_charged()
     /// @note diff cent loop
     for (const auto &cfg : cent_configs)
     {
-        AMPTEventReader reader(cfg.path, cfg.n_files); // 使用配置里的 n_files
+        AMPTEventReader reader(cfg.path.c_str(), cfg.n_files); // 使用配置里的 n_files
         /// @note event loop
         for (const auto &evt : reader)
         {
