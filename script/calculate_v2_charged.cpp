@@ -130,9 +130,9 @@ void calculate_v2_charged()
                 double nParticlesCh = evt.nParticlesAfterCut(cut4Pt);
                 if (nParticlesCh)
                 {
-                    fFCCh->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4Pt), nParticlesCh, rndm);
-                    fFCCh->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4Pt), nParticlesCh, rndm);
-                    fFCCh->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4Pt), nParticlesCh * nParticlesCh - nParticlesCh, rndm);
+                    fFCCh->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4Pt), 1., rndm);
+                    fFCCh->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4Pt), 1., rndm);
+                    fFCCh->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4Pt), 1., rndm);
                 }
             } // end charged flow calculation
 
@@ -161,9 +161,9 @@ void calculate_v2_charged()
                 double nParticlesPi = evt.nParticlesAfterCut(cut4PtPi);
                 if (nParticlesPi > 1)
                 {
-                    fFCPi->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPi), nParticlesPi, rndm);
-                    fFCPi->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPi), nParticlesPi, rndm);
-                    fFCPi->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPi), nParticlesPi * nParticlesPi - nParticlesPi, rndm);
+                    fFCPi->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPi), 1., rndm);
+                    fFCPi->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPi), 1., rndm);
+                    fFCPi->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPi), 1., rndm);
                 }
             }
             // end pion
@@ -193,9 +193,9 @@ void calculate_v2_charged()
                 double nParticlesKa = evt.nParticlesAfterCut(cut4PtKa);
                 if (nParticlesKa > 1)
                 {
-                    fFCKa->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtKa), nParticlesKa, rndm);
-                    fFCKa->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtKa), nParticlesKa, rndm);
-                    fFCKa->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtKa), nParticlesKa * nParticlesKa - nParticlesKa, rndm);
+                    fFCKa->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtKa), 1., rndm);
+                    fFCKa->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtKa), 1. rndm);
+                    fFCKa->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtKa), 1., rndm);
                 }
             }
             // end kaon
@@ -225,9 +225,9 @@ void calculate_v2_charged()
                 double nParticlesPr = evt.nParticlesAfterCut(cut4PtPr);
                 if (nParticlesPr > 1)
                 {
-                    fFCPr->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPr), nParticlesPr, rndm);
-                    fFCPr->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPr), nParticlesPr, rndm);
-                    fFCPr->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPr), nParticlesPr * nParticlesPr - nParticlesPr, rndm);
+                    fFCPr->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPr), 1., rndm);
+                    fFCPr->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPr), 1., rndm);
+                    fFCPr->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPr), 1., rndm);
                 }
             }
             // end proton

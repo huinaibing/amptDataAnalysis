@@ -57,7 +57,7 @@ void CalculateCovV2ChargedPt(
 
     double val = cum / npair;
 
-    fOut->FillProfile(profileName, bin_val, val * evt.GetMeanPt(customCut), npair * evt.nParticlesAfterCut(customCut), rndm);
+    fOut->FillProfile(profileName, bin_val, val * evt.GetMeanPt(customCut), 1., rndm);
 }
 
 void CalculateC22TrackWeight(
@@ -75,7 +75,7 @@ void CalculateC22TrackWeight(
     double npair = gfw->Calculate(mgr.Get(cfg), 0, true).real();
     if (npair != 0)
     {
-        fOut->FillProfile(profileName, bin_val, cum / npair, npair * evt.nParticlesAfterCut(customCut), rndm);
+        fOut->FillProfile(profileName, bin_val, cum / npair, 1., rndm);
     }
 }
 
