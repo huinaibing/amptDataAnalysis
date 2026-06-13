@@ -9,11 +9,21 @@
 #include "TCanvas.h"
 #include "TPDGCode.h"
 #include "TProfile.h"
+#include "TProfile3D.h"
 #include "TRandom3.h"
+#include <iostream>
 
 using namespace o2;
 using namespace o2::framework;
 using namespace o2::framework::expressions;
+
+#define GENERATE_AXIS(start, end, step) { \
+    []() { \
+        std::vector<double> v; \
+        for (double x = start; x <= end + 1e-9; x += step) { \
+            v.push_back(x); \
+        } \
+        return v; }()}
 
 /**
  * @brief 记得改路径
@@ -36,8 +46,43 @@ void calculate_v2_charged()
 {
     /// @note configure
     AxisSpec axisMultiplicity{{0, 10, 20, 30, 40, 50, 60, 70, 80, 90}, "Centrality (%)"};
+    AxisSpec axisBootstrap{{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30}, "bootstrap"};
+    AxisSpec axisMeanPt{{GENERATE_AXIS(0, 3, 0.003)},
+                        "meanPt for c22pt"};
     int cfgFlowNbootstrap = 30;
     // end configure
+
+    /// @note hist for new method
+    auto hPion = new TProfile3D("hPion", "hPion", axisMeanPt.getNbins(), axisMeanPt.binEdges.data(),
+                                axisMultiplicity.getNbins(), axisMultiplicity.binEdges.data(),
+                                axisBootstrap.getNbins(), axisBootstrap.binEdges.data());
+    auto hChargedPionFull = new TProfile3D("hChargedPionFull", "hChargedPionFull", axisMeanPt.getNbins(), axisMeanPt.binEdges.data(),
+                                           axisMultiplicity.getNbins(), axisMultiplicity.binEdges.data(),
+                                           axisBootstrap.getNbins(), axisBootstrap.binEdges.data());
+    auto hPionPion = new TProfile3D("hPionPion", "hPionPion", axisMeanPt.getNbins(), axisMeanPt.binEdges.data(),
+                                    axisMultiplicity.getNbins(), axisMultiplicity.binEdges.data(),
+                                    axisBootstrap.getNbins(), axisBootstrap.binEdges.data());
+
+    auto hKaon = new TProfile3D("hKaon", "hKaon", axisMeanPt.getNbins(), axisMeanPt.binEdges.data(),
+                                axisMultiplicity.getNbins(), axisMultiplicity.binEdges.data(),
+                                axisBootstrap.getNbins(), axisBootstrap.binEdges.data());
+    auto hChargedKaonFull = new TProfile3D("hChargedKaonFull", "hChargedKaonFull", axisMeanPt.getNbins(), axisMeanPt.binEdges.data(),
+                                           axisMultiplicity.getNbins(), axisMultiplicity.binEdges.data(),
+                                           axisBootstrap.getNbins(), axisBootstrap.binEdges.data());
+    auto hKaonKaon = new TProfile3D("hKaonKaon", "hKaonKaon", axisMeanPt.getNbins(), axisMeanPt.binEdges.data(),
+                                    axisMultiplicity.getNbins(), axisMultiplicity.binEdges.data(),
+                                    axisBootstrap.getNbins(), axisBootstrap.binEdges.data());
+
+    auto hProton = new TProfile3D("hProton", "hProton", axisMeanPt.getNbins(), axisMeanPt.binEdges.data(),
+                                  axisMultiplicity.getNbins(), axisMultiplicity.binEdges.data(),
+                                  axisBootstrap.getNbins(), axisBootstrap.binEdges.data());
+    auto hChargedProtonFull = new TProfile3D("hChargedProtonFull", "hChargedProtonFull", axisMeanPt.getNbins(), axisMeanPt.binEdges.data(),
+                                             axisMultiplicity.getNbins(), axisMultiplicity.binEdges.data(),
+                                             axisBootstrap.getNbins(), axisBootstrap.binEdges.data());
+    auto hProtonProton = new TProfile3D("hProtonProton", "hProtonProton", axisMeanPt.getNbins(), axisMeanPt.binEdges.data(),
+                                        axisMultiplicity.getNbins(), axisMultiplicity.binEdges.data(),
+                                        axisBootstrap.getNbins(), axisBootstrap.binEdges.data());
+    // end hist for new method
 
 #pragma region // flow container init
     TRandom3 *fRndm = new TRandom3(0);
@@ -161,9 +206,13 @@ void calculate_v2_charged()
                 double nParticlesPi = evt.nParticlesAfterCut(cut4PtPi);
                 if (nParticlesPi > 1)
                 {
-                    fFCPi->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPi), 1., rndm);
-                    fFCPi->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPi), 1., rndm);
-                    fFCPi->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPi), 1., rndm);
+                    FillMeanptCentBSProfile(cfg.bin_val, rndm,
+                                            evt.GetMeanPt(cut4PtPi), nParticlesPi,
+                                            gfw, mgr, CorrType::Pion08Gap22a, CorrType::Pion08Gap22b, CorrType::PiPi08Gap22,
+                                            hPion, hChargedPionFull, hPionPion);
+                    fFCPi->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPi), nParticlesPi, rndm);
+                    fFCPi->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPi), nParticlesPi * nParticlesPi - nParticlesPi, rndm);
+                    fFCPi->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPi), nParticlesPi * nParticlesPi - nParticlesPi, rndm);
                 }
             }
             // end pion
@@ -193,9 +242,13 @@ void calculate_v2_charged()
                 double nParticlesKa = evt.nParticlesAfterCut(cut4PtKa);
                 if (nParticlesKa > 1)
                 {
-                    fFCKa->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtKa), 1., rndm);
-                    fFCKa->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtKa), 1. rndm);
-                    fFCKa->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtKa), 1., rndm);
+                    FillMeanptCentBSProfile(cfg.bin_val, rndm,
+                                            evt.GetMeanPt(cut4PtKa), nParticlesKa,
+                                            gfw, mgr, CorrType::Kaon08Gap22a, CorrType::Kaon08Gap22b, CorrType::KaKa08Gap22,
+                                            hKaon, hChargedKaonFull, hKaonKaon);
+                    fFCKa->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtKa), nParticlesKa, rndm);
+                    fFCKa->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtKa), nParticlesKa * nParticlesKa - nParticlesKa, rndm);
+                    fFCKa->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtKa), nParticlesKa * nParticlesKa - nParticlesKa, rndm);
                 }
             }
             // end kaon
@@ -225,9 +278,13 @@ void calculate_v2_charged()
                 double nParticlesPr = evt.nParticlesAfterCut(cut4PtPr);
                 if (nParticlesPr > 1)
                 {
-                    fFCPr->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPr), 1., rndm);
-                    fFCPr->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPr), 1., rndm);
-                    fFCPr->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPr), 1., rndm);
+                    FillMeanptCentBSProfile(cfg.bin_val, rndm,
+                                            evt.GetMeanPt(cut4PtPr), nParticlesPr,
+                                            gfw, mgr, CorrType::Prot08Gap22a, CorrType::Prot08Gap22b, CorrType::PrPr08Gap22,
+                                            hProton, hChargedProtonFull, hProtonProton);
+                    fFCPr->FillProfile("hMeanPt", cfg.bin_val, evt.GetMeanPt(cut4PtPr), nParticlesPr, rndm);
+                    fFCPr->FillProfile("ptAve", cfg.bin_val, evt.GetMeanPt(cut4PtPr), nParticlesPr * nParticlesPr - nParticlesPr, rndm);
+                    fFCPr->FillProfile("ptSquareAve", cfg.bin_val, evt.GetPtSquareAve(cut4PtPr), nParticlesPr * nParticlesPr - nParticlesPr, rndm);
                 }
             }
             // end proton
@@ -245,6 +302,23 @@ void calculate_v2_charged()
     fFCKa->Write();
     fFCPr->Write();
 
+    outputAnalysisResult->mkdir("pid-flow-pt-corr/meanptCentNbs");
+    outputAnalysisResult->cd("pid-flow-pt-corr/meanptCentNbs");
+
+    hPion->Write();
+    hChargedPionFull->Write();
+    hPionPion->Write();
+
+    hKaon->Write();
+    hChargedKaonFull->Write();
+    hKaonKaon->Write();
+
+    hProton->Write();
+    hChargedProtonFull->Write();
+    hProtonProton->Write();
+
     outputAnalysisResult->Close();
 #pragma endregion
+
+    std::cout << "==================================finish===================================" << std::endl;
 }
