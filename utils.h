@@ -123,7 +123,8 @@ void FillMeanptCentBSProfile(const double &cent,
                              CorrType pure,
                              TProfile3D *POIREF,
                              TProfile3D *REF,
-                             TProfile3D *POIPOI)
+                             TProfile3D *POIPOI,
+                             TProfile3D *MEANPT)
 {
     /// @note calculate <2> for charged
     double dnx, val;
@@ -162,6 +163,7 @@ void FillMeanptCentBSProfile(const double &cent,
     // end get POIPOI
 
     POIPOI->Fill(pidMeanpt, cent, rndm * cfgFlowNbootstrap, valPure, npairPure);
+    MEANPT->Fill(pidMeanpt, cent, rndm * cfgFlowNbootstrap, pidMeanpt, nPid);
 }
 
 #endif
