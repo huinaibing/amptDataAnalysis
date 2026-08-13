@@ -1,0 +1,110 @@
+{
+    "selection": {
+        "flow_subevents": {
+            "eta_max": 0.8,
+            "inner_abs_eta": 0.4
+        },
+        "mean_pt_abs_eta_max": 0.4,
+        "pt_ranges": {
+            "charged": {
+                "min": 0.2,
+                "max": 3.0
+            },
+            "pion": {
+                "min": 0.2,
+                "max": 3.0
+            },
+            "kaon": {
+                "min": 0.2,
+                "max": 3.0
+            },
+            "proton": {
+                "min": 0.2,
+                "max": 3.0
+            }
+        }
+    },
+    "centrality_from_impact_parameter": {
+        "pi": 3.141592653589793,
+        "reference_radius_squared": 7.84
+    },
+    "bootstrap": {
+        "random_seed": 0
+    },
+    "v2_pt_rho_output": {
+        "strict_pt_bounds": false,
+        "strict_eta_bounds": false,
+        "axes": {
+            "centrality": {
+                "binning": "uniform",
+                "bins": 90,
+                "min": 0.0,
+                "max": 90.0
+            },
+            "mean_pt": {
+                "binning": "uniform",
+                "bins": 1000,
+                "min": 0.0,
+                "max": 3.0
+            },
+            "bootstrap": {
+                "binning": "uniform",
+                "bins": 30,
+                "min": 0.0,
+                "max": 30.0
+            }
+        }
+    },
+    "c22_delta_pt_output": {
+        "use_pure": false,
+        "strict_pt_bounds": true,
+        "strict_eta_bounds": true,
+        "axes": {
+            "centrality": {
+                "binning": "variable",
+                "edges": [
+                    0.0,
+                    1.0,
+                    2.0,
+                    3.0,
+                    4.0,
+                    5.0,
+                    6.0,
+                    7.0,
+                    8.0,
+                    9.0,
+                    10.0,
+                    12.0,
+                    14.0,
+                    16.0,
+                    18.0,
+                    20.0,
+                    25.0,
+                    30.0,
+                    35.0,
+                    40.0,
+                    45.0,
+                    50.0,
+                    55.0,
+                    60.0,
+                    65.0,
+                    70.0,
+                    80.0,
+                    90.0
+                ]
+            },
+            "mean_pt": {
+                "binning": "uniform",
+                "bins": 300,
+                "min": 0.0,
+                "max": 3.0
+            },
+            "bootstrap": {
+                "binning": "uniform",
+                "bins": 30,
+                "min": 0.0,
+                "max": 30.0
+            }
+        }
+    }
+}

@@ -3,3 +3,5 @@
 **/*.root
 **/*.log
 **/*.json
+!config/
+!config/*.json

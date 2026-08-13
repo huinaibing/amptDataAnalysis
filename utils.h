@@ -1,169 +1,170 @@
-#ifndef UTILS
-#define UTILS
+#ifndef AMPT_DATA_ANALYSIS_FLOW_CONTAINER_UTILS_H
+#define AMPT_DATA_ANALYSIS_FLOW_CONTAINER_UTILS_H
+
+#include "analysisUtils.h"
+
 #include "PWGCF/GenericFramework/Core/FlowContainer.h"
-#include "PWGCF/GenericFramework/Core/GFW.h"
-#include "TCanvas.h"
-#include "TProfile.h"
-#include "TRandom3.h"
-#include "corrConfigManager.h"
-#include "dataFrame/fileName.h"
-#include "dataLoader.h"
-#include "eventManager.h"
-#include "selection.h"
+#include "TProfile3D.h"
 
-const int cfgFlowNbootstrap = 30;
+inline constexpr int kCompatibilityBootstrapSubsamples = 30;
 
-/**
- * @brief 用来填充c22 c24 这类图
- *
- * @param gfw
- * @param mgr
- * @param cfg
- * @param fOut
- * @param profileName
- * @param bin_val
- * @param rndm
- */
-void CalculateAndFill(
-    GFW *gfw,
-    const CorrConfigManager &mgr,
-    CorrType cfg,
-    FlowContainer *fOut,
-    const char *profileName,
-    double bin_val,
-    float rndm)
-{
-    double cum = gfw->Calculate(mgr.Get(cfg), 0, false).real();
-    double npair = gfw->Calculate(mgr.Get(cfg), 0, true).real();
-    if (npair != 0)
-    {
-        fOut->FillProfile(profileName, bin_val, cum / npair, npair, rndm);
-    }
+namespace ampt_analysis {
+inline void fillFlowProfile(FlowContainer &output, const char *profileName,
+                            double centrality,
+                            const CorrelationResult &correlation,
+                            double random) {
+  if (correlation.hasPairs()) {
+    output.FillProfile(profileName, centrality, correlation.value(),
+                       correlation.pairs, random);
+  }
 }
 
-void CalculateCovV2ChargedPt(
-    GFW *gfw,
-    const CorrConfigManager &mgr,
-    CorrType cfg,
-    FlowContainer *fOut,
-    const Event &evt,
-    double bin_val,
-    std::function<bool(const Track &)> customCut,
-    float rndm,
-    const char *profileName = "covV2Pt")
-{
-    double cum = gfw->Calculate(mgr.Get(cfg), 0, false).real();
-    double npair = gfw->Calculate(mgr.Get(cfg), 0, true).real();
-    if (npair == 0)
-        return;
-
-    double val = cum / npair;
-
-    fOut->FillProfile(profileName, bin_val, val * evt.GetMeanPt(customCut), npair * evt.nParticlesAfterCut(customCut), rndm);
+inline void fillFlowMeanPtProduct(FlowContainer &output,
+                                  const char *profileName, double centrality,
+                                  const CorrelationResult &correlation,
+                                  const Event::PtMoments &moments,
+                                  double random) {
+  if (correlation.hasPairs() && moments.count > 0) {
+    output.FillProfile(
+        profileName, centrality, correlation.value() * moments.mean(),
+        correlation.pairs * static_cast<double>(moments.count), random);
+  }
 }
 
-void CalculateC22TrackWeight(
-    GFW *gfw,
-    const CorrConfigManager &mgr,
-    CorrType cfg,
-    FlowContainer *fOut,
-    const Event &evt,
-    double bin_val,
-    std::function<bool(const Track &)> customCut,
-    float rndm,
-    const char *profileName = "c22TrackWeight")
-{
-    double cum = gfw->Calculate(mgr.Get(cfg), 0, false).real();
-    double npair = gfw->Calculate(mgr.Get(cfg), 0, true).real();
-    if (npair != 0)
-    {
-        fOut->FillProfile(profileName, bin_val, cum / npair, npair * evt.nParticlesAfterCut(customCut), rndm);
-    }
+inline void fillTrackWeightedFlow(FlowContainer &output,
+                                  const char *profileName, double centrality,
+                                  const CorrelationResult &correlation,
+                                  const Event::PtMoments &moments,
+                                  double random) {
+  if (correlation.hasPairs() && moments.count > 0) {
+    output.FillProfile(profileName, centrality, correlation.value(),
+                       correlation.pairs * static_cast<double>(moments.count),
+                       random);
+  }
 }
 
-double getPidC22InOneEvent(GFW *fGFW, const GFW::CorrConfig &corrconfA, const GFW::CorrConfig &corrconfB)
-{
-    double NpairA = fGFW->Calculate(corrconfA, 0, true).real();
-    double NpairB = fGFW->Calculate(corrconfB, 0, true).real();
+inline void fillMeanPtMoments(FlowContainer &output, double centrality,
+                              const Event::PtMoments &moments, double random) {
+  if (moments.count < 2) {
+    return;
+  }
 
-    if (NpairA == 0 && NpairB == 0)
-        return 0;
-
-    double ChC22A = NpairA ? fGFW->Calculate(corrconfA, 0, false).real() / NpairA : 0.;
-    double ChC22B = NpairB ? fGFW->Calculate(corrconfB, 0, false).real() / NpairB : 0.;
-
-    double ChC22 = (ChC22A * NpairA + ChC22B * NpairB) / (NpairA + NpairB);
-
-    return ChC22;
+  const double count = static_cast<double>(moments.count);
+  const double orderedPairs = count * (count - 1.);
+  output.FillProfile("hMeanPt", centrality, moments.mean(), count, random);
+  output.FillProfile("ptAve", centrality, moments.mean(), orderedPairs, random);
+  output.FillProfile("ptSquareAve", centrality, moments.distinctPairMean(),
+                     orderedPairs, random);
 }
 
 /**
- * @brief 自己看变量名字
- *
- * @param cent
- * @param rndm
- * @param pidMeanpt
- * @param nPid
- * @param fGFW
- * @param mgr
- * @param A correlation name
- * @param B correlation name
- * @param POIREF TProfile3D
- * @param REF TProfile3D
+ * Fill the processData-style meanptCentNbs profiles from correlations that
+ * were already calculated in the species loop.
  */
-void FillMeanptCentBSProfile(const double &cent,
-                             const double &rndm,
-                             const double &pidMeanpt,
-                             const double &nPid,
+inline void fillV2PtRhoMeanPtProfiles(
+    double centrality, double bootstrap, const Event::PtMoments &pidMoments,
+    const CorrelationResult &refRef,
+    const CorrelationResult &poiRef, const CorrelationResult &pure,
+    TProfile3D &poiRefProfile, TProfile3D &refRefProfile,
+    TProfile3D &pureProfile, TProfile3D &meanPtProfile) {
+  if (pidMoments.count == 0 || !refRef.isPhysical() || !poiRef.hasPairs() ||
+      poiRef.value() == 0.) {
+    return;
+  }
 
-                             GFW *fGFW,
-                             const CorrConfigManager &mgr,
-                             CorrType A,
-                             CorrType B,
-                             CorrType pure,
-                             TProfile3D *POIREF,
-                             TProfile3D *REF,
-                             TProfile3D *POIPOI,
-                             TProfile3D *MEANPT)
-{
-    /// @note calculate <2> for charged
-    double dnx, val;
-    dnx = fGFW->Calculate(mgr.Get(CorrType::Ref08Gap22), 0, true).real();
-    if (dnx == 0)
-        return;
-    val = fGFW->Calculate(mgr.Get(CorrType::Ref08Gap22), 0, false).real() / dnx;
-    if (std::fabs(val) >= 1)
-        return;
-    // end calculate <2> for charged
+  const double meanPt = pidMoments.mean();
+  const double count = static_cast<double>(pidMoments.count);
+  poiRefProfile.Fill(meanPt, centrality, bootstrap, poiRef.value(),
+                     count * poiRef.pairs);
+  refRefProfile.Fill(meanPt, centrality, bootstrap, refRef.value(),
+                     count * refRef.pairs);
 
-    /// @note get PID particle's c22(POI - REF)
-    double pidc22 = 0;
-    double npairPid = 0;
+  // POI-ref/ref-ref are valid independently of the POI-POI result.
+  if (!pure.isPhysical()) {
+    return;
+  }
+  pureProfile.Fill(meanPt, centrality, bootstrap, pure.value(), pure.pairs);
+  meanPtProfile.Fill(meanPt, centrality, bootstrap, meanPt, count);
+}
+} // namespace ampt_analysis
 
-    pidc22 = getPidC22InOneEvent(fGFW, mgr.Get(A), mgr.Get(B));
-    if (pidc22 == 0)
-        return;
-
-    npairPid = fGFW->Calculate(mgr.Get(A), 0, true).real() + fGFW->Calculate(mgr.Get(B), 0, true).real();
-    if (npairPid == 0)
-        return;
-
-    POIREF->Fill(pidMeanpt, cent, rndm * cfgFlowNbootstrap, pidc22, nPid * npairPid);
-    REF->Fill(pidMeanpt, cent, rndm * cfgFlowNbootstrap, val, dnx * nPid);
-    // end get PID particle's c22(POI - REF)
-
-    /// @note get POIPOI
-    double npairPure, valPure;
-    npairPure = fGFW->Calculate(mgr.Get(pure), 0, true).real();
-    if (npairPure == 0)
-        return;
-    valPure = fGFW->Calculate(mgr.Get(pure), 0, false).real() / npairPure;
-    if (std::fabs(valPure) >= 1)
-        return;
-    // end get POIPOI
-
-    POIPOI->Fill(pidMeanpt, cent, rndm * cfgFlowNbootstrap, valPure, npairPure);
-    MEANPT->Fill(pidMeanpt, cent, rndm * cfgFlowNbootstrap, pidMeanpt, nPid);
+// Compatibility wrappers for existing user macros outside this repository.
+inline void CalculateAndFill(GFW *gfw, const CorrConfigManager &manager,
+                             CorrType type, FlowContainer *output,
+                             const char *profileName, double centrality,
+                             float random) {
+  const auto correlation =
+      ampt_analysis::calculateCorrelation(*gfw, manager, type);
+  ampt_analysis::fillFlowProfile(*output, profileName, centrality, correlation,
+                                 random);
 }
 
-#endif
+template <typename Predicate>
+inline void CalculateCovV2ChargedPt(GFW *gfw, const CorrConfigManager &manager,
+                                    CorrType type, FlowContainer *output,
+                                    const Event &event, double centrality,
+                                    const Predicate &accept, float random,
+                                    const char *profileName = "covV2Pt") {
+  const auto correlation =
+      ampt_analysis::calculateCorrelation(*gfw, manager, type);
+  const auto moments = event.GetPtMoments(accept);
+  ampt_analysis::fillFlowMeanPtProduct(*output, profileName, centrality,
+                                       correlation, moments, random);
+}
+
+template <typename Predicate>
+inline void
+CalculateC22TrackWeight(GFW *gfw, const CorrConfigManager &manager,
+                        CorrType type, FlowContainer *output,
+                        const Event &event, double centrality,
+                        const Predicate &accept, float random,
+                        const char *profileName = "c22TrackWeight") {
+  const auto correlation =
+      ampt_analysis::calculateCorrelation(*gfw, manager, type);
+  const auto moments = event.GetPtMoments(accept);
+  ampt_analysis::fillTrackWeightedFlow(*output, profileName, centrality,
+                                       correlation, moments, random);
+}
+
+inline double getPidC22InOneEvent(GFW *gfw, const GFW::CorrConfig &configA,
+                                  const GFW::CorrConfig &configB) {
+  const auto a = ampt_analysis::calculateCorrelation(*gfw, configA);
+  const auto b = ampt_analysis::calculateCorrelation(*gfw, configB);
+  const ampt_analysis::CorrelationResult combined{a.numerator + b.numerator,
+                                                  a.pairs + b.pairs};
+  return combined.value();
+}
+
+inline void
+FillMeanptCentBSProfile(const double &centrality, const double &random,
+                        const double &pidMeanPt, const double &nPid, GFW *gfw,
+                        const CorrConfigManager &manager, CorrType typeA,
+                        CorrType typeB, CorrType pureType,
+                        TProfile3D *poiRefProfile, TProfile3D *refRefProfile,
+                        TProfile3D *pureProfile, TProfile3D *meanPtProfile) {
+  if (!gfw || !poiRefProfile || !refRefProfile || !pureProfile ||
+      !meanPtProfile || nPid <= 0.) {
+    return;
+  }
+
+  Event::PtMoments pidMoments;
+  pidMoments.count = static_cast<std::size_t>(nPid);
+  pidMoments.sum = pidMeanPt * nPid;
+
+  const auto refRef =
+      ampt_analysis::calculateCorrelation(*gfw, manager, CorrType::Ref08Gap22);
+  const auto poiRef =
+      ampt_analysis::calculateCombinedCorrelation(*gfw, manager, typeA, typeB);
+  const auto pure =
+      ampt_analysis::calculateCorrelation(*gfw, manager, pureType);
+  const auto bootstrapEdges = ampt_analysis::makeUniformEdges(
+      kCompatibilityBootstrapSubsamples, 0.,
+      static_cast<double>(kCompatibilityBootstrapSubsamples));
+  const double bootstrap =
+      ampt_analysis::sampleAxisCoordinate(bootstrapEdges, random);
+  ampt_analysis::fillV2PtRhoMeanPtProfiles(
+      centrality, bootstrap, pidMoments, refRef, poiRef, pure,
+      *poiRefProfile, *refRefProfile, *pureProfile, *meanPtProfile);
+}
+
+#endif // AMPT_DATA_ANALYSIS_FLOW_CONTAINER_UTILS_H

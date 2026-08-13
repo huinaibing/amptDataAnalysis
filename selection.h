@@ -1,36 +1,26 @@
-#ifndef SELECTION
-#define SELECTION
-#include "TMath.h"
-#include "dataFrame/track.h"
+#ifndef AMPT_DATA_ANALYSIS_SELECTION_H
+#define AMPT_DATA_ANALYSIS_SELECTION_H
 
-/**
- * @brief track selection
- * @details 1. eta 2. pt
- * @param trk
- * @return
- */
-bool particleSelected(const Track &trk)
-{
-    if (TMath::Abs(trk.GetEta()) > 0.8)
-        return false;
-    if (trk.GetPt() > 3)
-        return false;
-    if (trk.GetPt() < 0.2)
-        return false;
+#include "analysisUtils.h"
 
-    return true;
+// Compatibility wrappers used by older ROOT macros.
+inline const ampt_analysis::AnalysisConfig &inclusiveSelectionConfig() {
+  static const ampt_analysis::AnalysisConfig config = [] {
+    auto value = ampt_analysis::defaultConfig();
+    value.strictPtBounds = false;
+    value.strictEtaBounds = false;
+    return value;
+  }();
+  return config;
 }
 
-bool cut4Pt(const Track &trk)
-{
-    if (TMath::Abs(trk.GetEta()) > 0.4)
-        return false;
-    if (trk.GetPt() > 3)
-        return false;
-    if (trk.GetPt() < 0.2)
-        return false;
-
-    return true;
+inline bool particleSelected(const Track &track) {
+  return ampt_analysis::acceptsFlowTrack(track, inclusiveSelectionConfig());
 }
 
-#endif
+inline bool cut4Pt(const Track &track) {
+  return ampt_analysis::acceptsMeanPtTrack(track, 0,
+                                           inclusiveSelectionConfig());
+}
+
+#endif // AMPT_DATA_ANALYSIS_SELECTION_H

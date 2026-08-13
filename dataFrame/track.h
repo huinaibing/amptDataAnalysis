@@ -1,32 +1,31 @@
-#ifndef TRACK
-#define TRACK
+#ifndef AMPT_DATA_ANALYSIS_TRACK_H
+#define AMPT_DATA_ANALYSIS_TRACK_H
 
-struct Track
-{
-    int eventID;
-    int nParticles;
-    double imp;
+#include <cmath>
+#include <limits>
 
-    int pdgPid;
-    double p_x, p_y, p_z;
+struct Track {
+  int eventID = 0;
+  int nParticles = 0;
+  double imp = 0.;
 
-    double GetPt() const
-    {
-        return std::sqrt(p_x * p_x + p_y * p_y);
+  int pdgPid = 0;
+  double p_x = 0.;
+  double p_y = 0.;
+  double p_z = 0.;
+  int sourceFile = -1;
+
+  double GetPt() const { return std::sqrt(p_x * p_x + p_y * p_y); }
+
+  double GetEta() const {
+    const double p = std::sqrt(p_x * p_x + p_y * p_y + p_z * p_z);
+    if (p == std::abs(p_z)) {
+      return std::numeric_limits<double>::infinity();
     }
+    return 0.5 * std::log((p + p_z) / (p - p_z));
+  }
 
-    double GetEta() const
-    {
-        double p = std::sqrt(p_x * p_x + p_y * p_y + p_z * p_z);
-        if (p == std::abs(p_z))
-            return INFINITY;
-        return 0.5 * std::log((p + p_z) / (p - p_z));
-    }
-
-    double GetPhi() const
-    {
-        return std::atan2(p_y, p_x);
-    }
+  double GetPhi() const { return std::atan2(p_y, p_x); }
 };
 
-#endif
+#endif // AMPT_DATA_ANALYSIS_TRACK_H
