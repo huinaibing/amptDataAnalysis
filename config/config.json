@@ -7,19 +7,19 @@
         "mean_pt_abs_eta_max": 0.4,
         "pt_ranges": {
             "charged": {
-                "min": 0.2,
+                "min": 0.4,
                 "max": 3.0
             },
             "pion": {
-                "min": 0.2,
+                "min": 0.4,
                 "max": 3.0
             },
             "kaon": {
-                "min": 0.2,
+                "min": 0.4,
                 "max": 3.0
             },
             "proton": {
-                "min": 0.2,
+                "min": 0.4,
                 "max": 3.0
             }
         }
@@ -61,6 +61,30 @@
         "strict_eta_bounds": true,
         "axes": {
             "centrality": {
+                "binning": "uniform",
+                "bins": 90,
+                "min": 0.0,
+                "max": 90.0
+            },
+            "mean_pt": {
+                "binning": "uniform",
+                "bins": 500,
+                "min": 0.0,
+                "max": 3.0
+            },
+            "bootstrap": {
+                "binning": "uniform",
+                "bins": 30,
+                "min": 0.0,
+                "max": 30.0
+            }
+        }
+    },
+    "pid_pt_correlations_output": {
+        "strict_pt_bounds": true,
+        "strict_eta_bounds": true,
+        "axes": {
+            "centrality": {
                 "binning": "variable",
                 "edges": [
                     0.0,
@@ -92,12 +116,6 @@
                     80.0,
                     90.0
                 ]
-            },
-            "mean_pt": {
-                "binning": "uniform",
-                "bins": 300,
-                "min": 0.0,
-                "max": 3.0
             },
             "bootstrap": {
                 "binning": "uniform",

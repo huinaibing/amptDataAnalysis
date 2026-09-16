@@ -9,8 +9,10 @@ particle trees. Run the macros from `script/` inside an O2Physics environment.
   FlowContainer and `meanptCentNbs` output.
 - `script/calculate_c22deltapt.cpp` produces the
   `processDataC22DeltaPt`-style profiles under `c22DeltaPt/`.
+- `script/calculate_pidptcorrelations.cpp` produces the
+  `processPidPtCorrelations`-style PID mean-pT `FlowContainer`.
 
-Both functions accept:
+All three functions accept:
 
 1. input-file JSON path;
 2. output ROOT path;
@@ -27,6 +29,7 @@ Quick one-file examples:
 ```bash
 root -l -b -q 'calculate_v2ptrho.cpp("../config/cent_cfg.json", "/tmp/v2ptrho.root", 1, 1, "../config/config.json")'
 root -l -b -q 'calculate_c22deltapt.cpp("../config/cent_cfg.json", "/tmp/c22.root", 1, 1, -1, "../config/config.json")'
+root -l -b -q 'calculate_pidptcorrelations.cpp("../config/cent_cfg.json", "/tmp/pidpt.root", 1, 1, "../config/config.json")'
 ```
 
 ## Configuration
@@ -39,8 +42,10 @@ Configuration files live in `config/`:
 `config.json` controls the flow subevent eta boundaries, the independent
 mean-pT eta interval, charged/pion/kaon/proton pT ranges, strict or inclusive
 cut boundaries, impact-parameter centrality conversion, bootstrap seed,
-POI-POI versus POI-ref mode, and the centrality/mean-pT/bootstrap axes for both
-output layouts. Every axis uses one of these two forms:
+POI-POI versus POI-ref mode, and each macro's output axes. The
+`pid_pt_correlations_output` section independently controls strict pT/eta
+boundaries, centrality bins, and bootstrap subsamples for
+`calculate_pidptcorrelations.cpp`. Every axis uses one of these two forms:
 
 ```json
 {"binning": "uniform", "bins": 300, "min": 0.0, "max": 3.0}

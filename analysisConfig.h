@@ -42,6 +42,13 @@ struct OutputConfig {
   AxisConfig bootstrapAxis;
 };
 
+struct PidPtCorrelationsOutputConfig {
+  bool strictPtBounds = true;
+  bool strictEtaBounds = true;
+  AxisConfig centralityAxis;
+  AxisConfig bootstrapAxis;
+};
+
 struct AnalysisConfig {
   // Flow particles cover [-flowEtaMax, -flowEtaGap] and
   // [flowEtaGap, flowEtaMax]. Mean-pT particles use an independent interval.
@@ -75,6 +82,17 @@ struct AnalysisConfig {
         16., 18., 20., 25., 30., 35., 40., 45., 50., 55., 60., 65., 70.,
         80., 90.}},
       {AxisBinning::Uniform, 300, 0., 3., {}},
+      {AxisBinning::Uniform, 30, 0., 30., {}}};
+  PidPtCorrelationsOutputConfig pidPtCorrelationsOutput{
+      true,
+      true,
+      {AxisBinning::Variable,
+       0,
+       0.,
+       0.,
+       {0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9.,  10., 12., 14.,
+        16., 18., 20., 25., 30., 35., 40., 45., 50., 55., 60., 65., 70.,
+        80., 90.}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
   bool c22UsePure = false;
 
@@ -179,6 +197,16 @@ inline OutputConfig readOutputConfig(const nlohmann::json &document,
           readAxisConfig(axes.at("bootstrap"), name + ".bootstrap")};
 }
 
+inline PidPtCorrelationsOutputConfig
+readPidPtCorrelationsOutputConfig(const nlohmann::json &document,
+                                  const std::string &name) {
+  const auto &axes = document.at("axes");
+  return {document.at("strict_pt_bounds").get<bool>(),
+          document.at("strict_eta_bounds").get<bool>(),
+          readAxisConfig(axes.at("centrality"), name + ".centrality"),
+          readAxisConfig(axes.at("bootstrap"), name + ".bootstrap")};
+}
+
 inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
   std::ifstream input(jsonPath);
   if (!input.is_open()) {
@@ -216,6 +244,9 @@ inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
   config.c22DeltaPtOutput =
       readOutputConfig(c22Output, "c22_delta_pt_output");
   config.c22UsePure = c22Output.at("use_pure").get<bool>();
+  config.pidPtCorrelationsOutput = readPidPtCorrelationsOutputConfig(
+      document.at("pid_pt_correlations_output"),
+      "pid_pt_correlations_output");
 
   if (config.flowEtaGap < 0. || config.flowEtaMax <= config.flowEtaGap) {
     throw std::runtime_error(

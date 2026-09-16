@@ -14,87 +14,95 @@
 #include <string>
 #include <vector>
 
-namespace ampt_c22_delta_pt_macro {
-using ampt_analysis::CorrelationResult;
-using ampt_analysis::SpeciesDefinition;
+namespace ampt_c22_delta_pt_macro
+{
+  using ampt_analysis::CorrelationResult;
+  using ampt_analysis::SpeciesDefinition;
 
-std::unique_ptr<TProfile3D>
-makeC22Profile(const char *name, const char *title,
-               const std::vector<double> &centralityEdges,
-               const std::vector<double> &meanPtEdges,
-               const std::vector<double> &bootstrapEdges) {
-  return std::make_unique<TProfile3D>(
-      name, title, static_cast<int>(centralityEdges.size()) - 1,
-      centralityEdges.data(), static_cast<int>(meanPtEdges.size()) - 1,
-      meanPtEdges.data(), static_cast<int>(bootstrapEdges.size()) - 1,
-      bootstrapEdges.data());
-}
-
-std::unique_ptr<TProfile2D>
-makeMeanPtProfile(const char *name, const char *title,
-                  const std::vector<double> &centralityEdges,
-                  const std::vector<double> &bootstrapEdges) {
-  return std::make_unique<TProfile2D>(
-      name, title, static_cast<int>(centralityEdges.size()) - 1,
-      centralityEdges.data(), static_cast<int>(bootstrapEdges.size()) - 1,
-      bootstrapEdges.data());
-}
-
-void fillC22Profile(TProfile3D &profile, double centrality, double meanPt,
-                    double bootstrap, const CorrelationResult &correlation) {
-  if (correlation.isPhysical()) {
-    // Mean pT is a coordinate; only the GFW pair count enters the weight.
-    profile.Fill(centrality, meanPt, bootstrap, correlation.value(),
-                 correlation.pairs);
+  std::unique_ptr<TProfile3D>
+  makeC22Profile(const char *name, const char *title,
+                 const std::vector<double> &centralityEdges,
+                 const std::vector<double> &meanPtEdges,
+                 const std::vector<double> &bootstrapEdges)
+  {
+    return std::make_unique<TProfile3D>(
+        name, title, static_cast<int>(centralityEdges.size()) - 1,
+        centralityEdges.data(), static_cast<int>(meanPtEdges.size()) - 1,
+        meanPtEdges.data(), static_cast<int>(bootstrapEdges.size()) - 1,
+        bootstrapEdges.data());
   }
-}
 
-struct C22SpeciesOutput {
-  const SpeciesDefinition *definition = nullptr;
-  std::unique_ptr<TProfile2D> meanPt;
-  std::unique_ptr<TProfile3D> refRef;
-  std::unique_ptr<TProfile3D> signal;
-};
+  std::unique_ptr<TProfile2D>
+  makeMeanPtProfile(const char *name, const char *title,
+                    const std::vector<double> &centralityEdges,
+                    const std::vector<double> &bootstrapEdges)
+  {
+    return std::make_unique<TProfile2D>(
+        name, title, static_cast<int>(centralityEdges.size()) - 1,
+        centralityEdges.data(), static_cast<int>(bootstrapEdges.size()) - 1,
+        bootstrapEdges.data());
+  }
 
-C22SpeciesOutput makeSpeciesOutput(const SpeciesDefinition &definition,
-                                   bool usePure,
-                                   const std::vector<double> &centralityEdges,
-                                   const std::vector<double> &meanPtEdges,
-                                   const std::vector<double> &bootstrapEdges) {
-  const std::string species = definition.speciesName;
-  const std::string axisLabel = definition.axisLabel;
+  void fillC22Profile(TProfile3D &profile, double centrality, double meanPt,
+                      double bootstrap, const CorrelationResult &correlation)
+  {
+    if (correlation.isPhysical())
+    {
+      // Mean pT is a coordinate; only the GFW pair count enters the weight.
+      profile.Fill(centrality, meanPt, bootstrap, correlation.value(),
+                   correlation.pairs);
+    }
+  }
 
-  C22SpeciesOutput output;
-  output.definition = &definition;
-  output.meanPt = makeMeanPtProfile(
-      ("hMeanPt" + species).c_str(),
-      (species + " mean p_{T};Centrality (%);Bootstrap subsample;[p_{T}]_{" +
-       axisLabel + "} (GeV/#it{c})")
-          .c_str(),
-      centralityEdges, bootstrapEdges);
-  output.refRef =
-      makeC22Profile(("c22dmeanpt" + species + "RefRef").c_str(),
-                     ("Ref-ref c_{2}{2} versus " + species +
-                      " event [p_{T}];Centrality (%);[p_{T}]_{" + axisLabel +
-                      "} (GeV/#it{c});Bootstrap subsample;c_{2}{2}")
-                         .c_str(),
-                     centralityEdges, meanPtEdges, bootstrapEdges);
+  struct C22SpeciesOutput
+  {
+    const SpeciesDefinition *definition = nullptr;
+    std::unique_ptr<TProfile2D> meanPt;
+    std::unique_ptr<TProfile3D> refRef;
+    std::unique_ptr<TProfile3D> signal;
+  };
 
-  const std::string mode = usePure ? "Pure" : "POIRef";
-  const std::string correlationLabel = usePure ? "POI-POI" : "POI-ref";
-  output.signal =
-      makeC22Profile(("c22dmeanpt" + species + mode).c_str(),
-                     (species + " " + correlationLabel + " c_{2}{2} versus " +
-                      species + " event [p_{T}];Centrality (%);[p_{T}]_{" +
-                      axisLabel + "} (GeV/#it{c});Bootstrap subsample;c_{2}{2}")
-                         .c_str(),
-                     centralityEdges, meanPtEdges, bootstrapEdges);
-  return output;
-}
+  C22SpeciesOutput makeSpeciesOutput(const SpeciesDefinition &definition,
+                                     bool usePure,
+                                     const std::vector<double> &centralityEdges,
+                                     const std::vector<double> &meanPtEdges,
+                                     const std::vector<double> &bootstrapEdges)
+  {
+    const std::string species = definition.speciesName;
+    const std::string axisLabel = definition.axisLabel;
 
-void writeObject(TDirectory &directory, TObject &object) {
-  directory.WriteTObject(&object, object.GetName());
-}
+    C22SpeciesOutput output;
+    output.definition = &definition;
+    output.meanPt = makeMeanPtProfile(
+        ("hMeanPt" + species).c_str(),
+        (species + " mean p_{T};Centrality (%);Bootstrap subsample;[p_{T}]_{" +
+         axisLabel + "} (GeV/#it{c})")
+            .c_str(),
+        centralityEdges, bootstrapEdges);
+    output.refRef =
+        makeC22Profile(("c22dmeanpt" + species + "RefRef").c_str(),
+                       ("Ref-ref c_{2}{2} versus " + species +
+                        " event [p_{T}];Centrality (%);[p_{T}]_{" + axisLabel +
+                        "} (GeV/#it{c});Bootstrap subsample;c_{2}{2}")
+                           .c_str(),
+                       centralityEdges, meanPtEdges, bootstrapEdges);
+
+    const std::string mode = usePure ? "Pure" : "POIRef";
+    const std::string correlationLabel = usePure ? "POI-POI" : "POI-ref";
+    output.signal =
+        makeC22Profile(("c22dmeanpt" + species + mode).c_str(),
+                       (species + " " + correlationLabel + " c_{2}{2} versus " +
+                        species + " event [p_{T}];Centrality (%);[p_{T}]_{" +
+                        axisLabel + "} (GeV/#it{c});Bootstrap subsample;c_{2}{2}")
+                           .c_str(),
+                       centralityEdges, meanPtEdges, bootstrapEdges);
+    return output;
+  }
+
+  void writeObject(TDirectory &directory, TObject &object)
+  {
+    directory.WriteTObject(&object, object.GetName());
+  }
 } // namespace ampt_c22_delta_pt_macro
 
 /**
@@ -114,9 +122,10 @@ void writeObject(TDirectory &directory, TObject &object) {
  */
 void calculate_c22deltapt(
     const char *inputConfigFile = "../config/cent_cfg.json",
-    const char *outputFile = "myAnalysisResultC22DeltaPt.root",
+    const char *outputFile = "myAnalysisResultC22DeltaPt_pt04.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1, int usePure = -1,
-    const char *analysisConfigFile = "../config/config.json") {
+    const char *analysisConfigFile = "../config/config.json")
+{
   using namespace ampt_analysis;
   using namespace ampt_c22_delta_pt_macro;
 
@@ -144,7 +153,8 @@ void calculate_c22deltapt(
 
   std::vector<C22SpeciesOutput> speciesOutputs;
   speciesOutputs.reserve(speciesDefinitions().size());
-  for (const auto &definition : speciesDefinitions()) {
+  for (const auto &definition : speciesDefinitions())
+  {
     speciesOutputs.emplace_back(makeSpeciesOutput(
         definition, usePureMode, centralityEdges, meanPtEdges, bootstrapEdges));
   }
@@ -159,7 +169,8 @@ void calculate_c22deltapt(
 
   const Long64_t processedEvents = forEachConfiguredEvent(
       inputConfigFile, maxFilesPerConfig, maxConfigs,
-      [&](const Event &event, const CentralityConfig &) {
+      [&](const Event &event, const CentralityConfig &)
+      {
         eventCount.Fill(0.5);
         eventCount.Fill(
             1.5); // AMPT has no reconstructed-event sel8 equivalent.
@@ -173,7 +184,8 @@ void calculate_c22deltapt(
         const double bootstrap =
             sampleAxisCoordinate(bootstrapEdges, random.Rndm());
         const Event::PtMoments &chargedMoments = samples.charged;
-        if (chargedMoments.count == 0) {
+        if (chargedMoments.count == 0)
+        {
           return;
         }
 
@@ -184,11 +196,13 @@ void calculate_c22deltapt(
         fillC22Profile(*chargedC22, centrality, chargedMoments.mean(),
                        bootstrap, refRef);
 
-        for (auto &output : speciesOutputs) {
+        for (auto &output : speciesOutputs)
+        {
           const SpeciesDefinition &definition = *output.definition;
           const Event::PtMoments &pidMoments =
               samples.forSpecies(definition.species);
-          if (pidMoments.count == 0) {
+          if (pidMoments.count == 0)
+          {
             continue;
           }
 
@@ -209,7 +223,8 @@ void calculate_c22deltapt(
       });
 
   TFile outputFileHandle(outputFile, "RECREATE");
-  if (outputFileHandle.IsZombie()) {
+  if (outputFileHandle.IsZombie())
+  {
     throw std::runtime_error(std::string("Cannot create output file: ") +
                              outputFile);
   }
@@ -221,13 +236,16 @@ void calculate_c22deltapt(
   TDirectory *c22Directory = taskDirectory->mkdir("c22DeltaPt");
   writeObject(*c22Directory, *chargedC22);
   writeObject(*c22Directory, *chargedMeanPt);
-  for (auto &output : speciesOutputs) {
+  for (auto &output : speciesOutputs)
+  {
     writeObject(*c22Directory, *output.meanPt);
   }
-  for (auto &output : speciesOutputs) {
+  for (auto &output : speciesOutputs)
+  {
     writeObject(*c22Directory, *output.refRef);
   }
-  for (auto &output : speciesOutputs) {
+  for (auto &output : speciesOutputs)
+  {
     writeObject(*c22Directory, *output.signal);
   }
 

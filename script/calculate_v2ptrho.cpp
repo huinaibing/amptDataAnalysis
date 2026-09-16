@@ -16,83 +16,92 @@
 #include <string>
 #include <vector>
 
-namespace ampt_v2_pt_rho_macro {
-using ampt_analysis::CorrelationResult;
-using ampt_analysis::SpeciesDefinition;
+namespace ampt_v2_pt_rho_macro
+{
+  using ampt_analysis::CorrelationResult;
+  using ampt_analysis::SpeciesDefinition;
 
-std::unique_ptr<TObjArray> makeChargedProfileNames() {
-  auto names = std::make_unique<TObjArray>();
-  names->SetOwner(true);
-  for (const char *name : {"c22", "c32", "c24", "c34", "c22Full",
-                           "c22TrackWeight", "c32TrackWeight", "c24TrackWeight",
-                           "c34TrackWeight", "c22FullTrackWeight", "covV2Pt",
-                           "covV3Pt", "ptSquareAve", "ptAve", "hMeanPt"}) {
-    names->Add(new TNamed(name, name));
+  std::unique_ptr<TObjArray> makeChargedProfileNames()
+  {
+    auto names = std::make_unique<TObjArray>();
+    names->SetOwner(true);
+    for (const char *name : {"c22", "c32", "c24", "c34", "c22Full",
+                             "c22TrackWeight", "c32TrackWeight", "c24TrackWeight",
+                             "c34TrackWeight", "c22FullTrackWeight", "covV2Pt",
+                             "covV3Pt", "ptSquareAve", "ptAve", "hMeanPt"})
+    {
+      names->Add(new TNamed(name, name));
+    }
+    return names;
   }
-  return names;
-}
 
-std::unique_ptr<TObjArray> makePidProfileNames(const TObjArray &chargedNames) {
-  auto names = std::unique_ptr<TObjArray>(
-      static_cast<TObjArray *>(chargedNames.Clone()));
-  names->SetOwner(true);
-  for (const char *name :
-       {"c22pure", "c32pure", "covV2PtPID", "c22TrackWeightPID"}) {
-    names->Add(new TNamed(name, name));
+  std::unique_ptr<TObjArray> makePidProfileNames(const TObjArray &chargedNames)
+  {
+    auto names = std::unique_ptr<TObjArray>(
+        static_cast<TObjArray *>(chargedNames.Clone()));
+    names->SetOwner(true);
+    for (const char *name :
+         {"c22pure", "c32pure", "covV2PtPID", "c22TrackWeightPID"})
+    {
+      names->Add(new TNamed(name, name));
+    }
+    return names;
   }
-  return names;
-}
 
-std::unique_ptr<TProfile3D>
-makeV2PtRhoProfile(const std::string &name,
-                   const std::vector<double> &meanPtEdges,
-                   const std::vector<double> &centralityEdges,
-                   const std::vector<double> &bootstrapEdges) {
-  return std::make_unique<TProfile3D>(
-      name.c_str(), name.c_str(), static_cast<int>(meanPtEdges.size()) - 1,
-      meanPtEdges.data(), static_cast<int>(centralityEdges.size()) - 1,
-      centralityEdges.data(), static_cast<int>(bootstrapEdges.size()) - 1,
-      bootstrapEdges.data());
-}
+  std::unique_ptr<TProfile3D>
+  makeV2PtRhoProfile(const std::string &name,
+                     const std::vector<double> &meanPtEdges,
+                     const std::vector<double> &centralityEdges,
+                     const std::vector<double> &bootstrapEdges)
+  {
+    return std::make_unique<TProfile3D>(
+        name.c_str(), name.c_str(), static_cast<int>(meanPtEdges.size()) - 1,
+        meanPtEdges.data(), static_cast<int>(centralityEdges.size()) - 1,
+        centralityEdges.data(), static_cast<int>(bootstrapEdges.size()) - 1,
+        bootstrapEdges.data());
+  }
 
-struct V2PtRhoSpeciesOutput {
-  const SpeciesDefinition *definition = nullptr;
-  std::unique_ptr<FlowContainer> flow;
-  std::unique_ptr<TProfile3D> poiRef;
-  std::unique_ptr<TProfile3D> refRef;
-  std::unique_ptr<TProfile3D> pure;
-  std::unique_ptr<TProfile3D> meanPt;
-};
+  struct V2PtRhoSpeciesOutput
+  {
+    const SpeciesDefinition *definition = nullptr;
+    std::unique_ptr<FlowContainer> flow;
+    std::unique_ptr<TProfile3D> poiRef;
+    std::unique_ptr<TProfile3D> refRef;
+    std::unique_ptr<TProfile3D> pure;
+    std::unique_ptr<TProfile3D> meanPt;
+  };
 
-V2PtRhoSpeciesOutput
-makeSpeciesOutput(const SpeciesDefinition &definition,
-                  const o2::framework::AxisSpec &centralityAxis,
-                  TObjArray &profileNames,
-                  const std::vector<double> &meanPtEdges,
-                  const std::vector<double> &centralityEdges,
-                  const std::vector<double> &bootstrapEdges, int nBootstrap) {
-  V2PtRhoSpeciesOutput output;
-  output.definition = &definition;
-  output.flow = std::make_unique<FlowContainer>(definition.flowContainerName);
-  output.flow->Initialize(&profileNames, centralityAxis, nBootstrap);
+  V2PtRhoSpeciesOutput
+  makeSpeciesOutput(const SpeciesDefinition &definition,
+                    const o2::framework::AxisSpec &centralityAxis,
+                    TObjArray &profileNames,
+                    const std::vector<double> &meanPtEdges,
+                    const std::vector<double> &centralityEdges,
+                    const std::vector<double> &bootstrapEdges, int nBootstrap)
+  {
+    V2PtRhoSpeciesOutput output;
+    output.definition = &definition;
+    output.flow = std::make_unique<FlowContainer>(definition.flowContainerName);
+    output.flow->Initialize(&profileNames, centralityAxis, nBootstrap);
 
-  const std::string baseName = definition.speciesName;
-  output.poiRef = makeV2PtRhoProfile("h" + baseName, meanPtEdges,
+    const std::string baseName = definition.speciesName;
+    output.poiRef = makeV2PtRhoProfile("h" + baseName, meanPtEdges,
+                                       centralityEdges, bootstrapEdges);
+    output.refRef = makeV2PtRhoProfile(
+        "hCharged" + baseName + "Full", meanPtEdges, centralityEdges,
+        bootstrapEdges);
+    output.pure = makeV2PtRhoProfile("h" + baseName + baseName, meanPtEdges,
                                      centralityEdges, bootstrapEdges);
-  output.refRef = makeV2PtRhoProfile(
-      "hCharged" + baseName + "Full", meanPtEdges, centralityEdges,
-      bootstrapEdges);
-  output.pure = makeV2PtRhoProfile("h" + baseName + baseName, meanPtEdges,
-                                   centralityEdges, bootstrapEdges);
-  output.meanPt = makeV2PtRhoProfile(
-      "h" + baseName + "Meanpt", meanPtEdges, centralityEdges,
-      bootstrapEdges);
-  return output;
-}
+    output.meanPt = makeV2PtRhoProfile(
+        "h" + baseName + "Meanpt", meanPtEdges, centralityEdges,
+        bootstrapEdges);
+    return output;
+  }
 
-void writeObject(TDirectory &directory, TObject &object) {
-  directory.WriteTObject(&object, object.GetName());
-}
+  void writeObject(TDirectory &directory, TObject &object)
+  {
+    directory.WriteTObject(&object, object.GetName());
+  }
 } // namespace ampt_v2_pt_rho_macro
 
 /**
@@ -106,7 +115,8 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
                        const char *outputFile = "myAnalysisResultV2PtRho.root",
                        int maxFilesPerConfig = -1, int maxConfigs = -1,
                        const char *analysisConfigFile =
-                           "../config/config.json") {
+                           "../config/config.json")
+{
   using namespace ampt_analysis;
   using namespace ampt_v2_pt_rho_macro;
 
@@ -130,7 +140,8 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
 
   std::vector<V2PtRhoSpeciesOutput> speciesOutputs;
   speciesOutputs.reserve(speciesDefinitions().size());
-  for (const auto &definition : speciesDefinitions()) {
+  for (const auto &definition : speciesDefinitions())
+  {
     speciesOutputs.emplace_back(
         makeSpeciesOutput(definition, centralityAxis, *pidNames, meanPtEdges,
                           centralityEdges, bootstrapEdges, nBootstrap));
@@ -142,7 +153,8 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
 
   const Long64_t processedEvents = forEachConfiguredEvent(
       inputConfigFile, maxFilesPerConfig, maxConfigs,
-      [&](const Event &event, const CentralityConfig &) {
+      [&](const Event &event, const CentralityConfig &)
+      {
         gfw.Clear();
         const EventSamples samples =
             fillGfwAndCollectSamples(gfw, event, config);
@@ -170,7 +182,8 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
                               chargedGap, chargedMoments, randomValue);
         fillMeanPtMoments(chargedFlow, centrality, chargedMoments, randomValue);
 
-        for (auto &output : speciesOutputs) {
+        for (auto &output : speciesOutputs)
+        {
           const SpeciesDefinition &definition = *output.definition;
           const Event::PtMoments &pidMoments =
               samples.forSpecies(definition.species);
@@ -214,7 +227,8 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
           fillTrackWeightedFlow(*output.flow, "c22TrackWeightPID", centrality,
                                 pure, pidMoments, randomValue);
 
-          if (pidMoments.count > 1) {
+          if (pidMoments.count > 1)
+          {
             const CorrelationResult poiRef{poiRefA.numerator +
                                                poiRefB.numerator,
                                            poiRefA.pairs + poiRefB.pairs};
@@ -228,24 +242,28 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
       });
 
   TFile outputFileHandle(outputFile, "RECREATE");
-  if (outputFileHandle.IsZombie()) {
+  if (outputFileHandle.IsZombie())
+  {
     throw std::runtime_error(std::string("Cannot create output file: ") +
                              outputFile);
   }
 
   TDirectory *taskDirectory = outputFileHandle.mkdir("pid-flow-pt-corr");
   writeObject(*taskDirectory, chargedFlow);
-  for (auto &output : speciesOutputs) {
+  for (auto &output : speciesOutputs)
+  {
     writeObject(*taskDirectory, *output.flow);
   }
 
   TDirectory *meanPtDirectory = taskDirectory->mkdir("meanptCentNbs");
-  for (auto &output : speciesOutputs) {
+  for (auto &output : speciesOutputs)
+  {
     writeObject(*meanPtDirectory, *output.poiRef);
     writeObject(*meanPtDirectory, *output.refRef);
     writeObject(*meanPtDirectory, *output.pure);
   }
-  for (auto &output : speciesOutputs) {
+  for (auto &output : speciesOutputs)
+  {
     writeObject(*meanPtDirectory, *output.meanPt);
   }
 
