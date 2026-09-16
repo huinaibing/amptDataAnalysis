@@ -169,6 +169,10 @@ void calculate_pidptcorrelations(
         std::array<PidPtMoments, 3> moments;
         for (const auto &track : event.particles)
         {
+          if (!isChargedPdg(track.pdgPid))
+          {
+            continue;
+          }
           const bool withinEta =
               outputConfig.strictEtaBounds
                   ? std::abs(track.GetEta()) < config.flowEtaMax

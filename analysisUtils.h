@@ -7,11 +7,14 @@
 
 #include "PWGCF/GenericFramework/Core/GFW.h"
 
+#include "TDatabasePDG.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <string>
+#include <unordered_map>
 
 namespace ampt_analysis {
 struct CorrelationResult {
@@ -64,11 +67,33 @@ inline double centralityFromImpactParameter(double impactParameter,
          config.centralityReferenceRadiusSquared;
 }
 
+/**
+ * Require a known PDG particle with non-zero electric charge. Unknown codes
+ * are rejected so neutral or unidentified entries cannot enter charged sums.
+ */
+inline bool isChargedPdg(int pdgPid) {
+  if (pdgPid == 0) {
+    return false;
+  }
+
+  static std::unordered_map<int, bool> chargeCache;
+  const auto cached = chargeCache.find(pdgPid);
+  if (cached != chargeCache.end()) {
+    return cached->second;
+  }
+
+  const TParticlePDG *particle =
+      TDatabasePDG::Instance()->GetParticle(pdgPid);
+  const bool isCharged = particle != nullptr && particle->Charge() != 0.;
+  chargeCache.emplace(pdgPid, isCharged);
+  return isCharged;
+}
+
 inline bool acceptsFlowTrack(const Track &track, const AnalysisConfig &config) {
   const bool withinEta = config.strictEtaBounds
                              ? std::abs(track.GetEta()) < config.flowEtaMax
                              : std::abs(track.GetEta()) <= config.flowEtaMax;
-  return withinEta &&
+  return isChargedPdg(track.pdgPid) && withinEta &&
          config.chargedPt.contains(track.GetPt(), config.strictPtBounds);
 }
 
@@ -77,8 +102,9 @@ inline bool acceptsMeanPtTrack(const Track &track, int absPdg,
   const bool withinEta = config.strictEtaBounds
                              ? std::abs(track.GetEta()) < config.meanPtEtaMax
                              : std::abs(track.GetEta()) <= config.meanPtEtaMax;
-  if (!withinEta || !ptRangeForPdg(absPdg, config)
-                         .contains(track.GetPt(), config.strictPtBounds)) {
+  if (!isChargedPdg(track.pdgPid) || !withinEta ||
+      !ptRangeForPdg(absPdg, config)
+           .contains(track.GetPt(), config.strictPtBounds)) {
     return false;
   }
   return absPdg == 0 || std::abs(track.pdgPid) == absPdg;
@@ -99,6 +125,7 @@ inline EventSamples fillGfwAndCollectSamples(GFW &gfw, const Event &event,
                                              const AnalysisConfig &config) {
   EventSamples samples;
   for (const auto &track : event.particles) {
+    const bool isCharged = isChargedPdg(track.pdgPid);
     const double pt = track.GetPt();
     const double eta = track.GetEta();
     const int absPdg = std::abs(track.pdgPid);
@@ -108,10 +135,11 @@ inline EventSamples fillGfwAndCollectSamples(GFW &gfw, const Event &event,
                                      ? std::abs(eta) < config.meanPtEtaMax
                                      : std::abs(eta) <= config.meanPtEtaMax;
     if (withinMeanPtEta) {
-      if (config.chargedPt.contains(pt, config.strictPtBounds)) {
+      if (isCharged &&
+          config.chargedPt.contains(pt, config.strictPtBounds)) {
         addPt(samples.charged, pt);
       }
-      if (species &&
+      if (isCharged && species &&
           ptRangeForPdg(absPdg, config).contains(pt, config.strictPtBounds)) {
         addPt(samples.pid.at(static_cast<std::size_t>(species->species)), pt);
       }
@@ -124,10 +152,10 @@ inline EventSamples fillGfwAndCollectSamples(GFW &gfw, const Event &event,
       continue;
     }
 
-    if (config.chargedPt.contains(pt, config.strictPtBounds)) {
+    if (isCharged && config.chargedPt.contains(pt, config.strictPtBounds)) {
       gfw.Fill(eta, 0, track.GetPhi(), 1., Mask::kRef);
     }
-    if (species &&
+    if (isCharged && species &&
         ptRangeForPdg(absPdg, config).contains(pt, config.strictPtBounds)) {
       gfw.Fill(eta, 0, track.GetPhi(), 1.,
                species->mask | species->overlapMask);
