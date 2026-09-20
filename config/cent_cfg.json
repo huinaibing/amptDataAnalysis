@@ -1,17 +1,77 @@
 [
     {
+        "path": "/home/huinaibing/new_ampt_version/ampt_12653346_",
+        "bin_val": 0,
+        "n_files": 2000
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_12653347_",
+        "bin_val": 0,
+        "n_files": 2000
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20333683_",
+        "bin_val": 0,
+        "n_files": 200
+    },
+    {
         "path": "/home/huinaibing/new_ampt_version/ampt_20333727_",
         "bin_val": 0,
-        "n_files": 500
+        "n_files": 600
     },
     {
         "path": "/home/huinaibing/new_ampt_version/ampt_20333728_",
         "bin_val": 0,
-        "n_files": 500
+        "n_files": 600
     },
     {
         "path": "/home/huinaibing/new_ampt_version/ampt_20345396_",
         "bin_val": 0,
-        "n_files": 500
+        "n_files": 600
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20390757_",
+        "bin_val": 0,
+        "n_files": 600
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20390758_",
+        "bin_val": 0,
+        "n_files": 600
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20390759_",
+        "bin_val": 0,
+        "n_files": 600
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20392178_",
+        "bin_val": 0,
+        "n_files": 600
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20392179_",
+        "bin_val": 0,
+        "n_files": 600
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20392180_",
+        "bin_val": 0,
+        "n_files": 600
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20392181_",
+        "bin_val": 0,
+        "n_files": 600
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20392183_",
+        "bin_val": 0,
+        "n_files": 2000
+    },
+    {
+        "path": "/home/huinaibing/new_ampt_version/ampt_20417720_",
+        "bin_val": 0,
+        "n_files": 2000
     }
 ]
