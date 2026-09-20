@@ -6,6 +6,7 @@
 #include "PWGCF/GenericFramework/Core/FlowContainer.h"
 #include "PWGCF/GenericFramework/Core/GFW.h"
 #include "TFile.h"
+#include "TH1D.h"
 #include "TObjArray.h"
 #include "TProfile3D.h"
 #include "TRandom3.h"
@@ -131,6 +132,11 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   const int nBootstrap = axisBinCount(config.v2PtRhoOutput.bootstrapAxis);
   const o2::framework::AxisSpec centralityAxis{centralityEdges,
                                                "Centrality (%)"};
+  TH1D hCent("hCent",
+             "Event centrality distribution (AMPT impact parameter);"
+             "Centrality (%);Events",
+             static_cast<int>(centralityEdges.size()) - 1,
+             centralityEdges.data());
 
   auto chargedNames = makeChargedProfileNames();
   auto pidNames = makePidProfileNames(*chargedNames);
@@ -161,6 +167,7 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
 
         const double centrality =
             centralityFromImpactParameter(event.imp, config);
+        hCent.Fill(centrality);
         const double randomValue = random.Rndm();
         const double bootstrap =
             sampleAxisCoordinate(bootstrapEdges, randomValue);
@@ -249,6 +256,7 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   }
 
   TDirectory *taskDirectory = outputFileHandle.mkdir("pid-flow-pt-corr");
+  writeObject(*taskDirectory, hCent);
   writeObject(*taskDirectory, chargedFlow);
   for (auto &output : speciesOutputs)
   {
