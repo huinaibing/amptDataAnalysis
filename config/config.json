@@ -7,19 +7,19 @@
         "mean_pt_abs_eta_max": 0.4,
         "pt_ranges": {
             "charged": {
-                "min": 0.4,
+                "min": 0.2,
                 "max": 3.0
             },
             "pion": {
-                "min": 0.4,
+                "min": 0.2,
                 "max": 3.0
             },
             "kaon": {
-                "min": 0.4,
+                "min": 0.2,
                 "max": 3.0
             },
             "proton": {
-                "min": 0.4,
+                "min": 0.2,
                 "max": 3.0
             }
         }
