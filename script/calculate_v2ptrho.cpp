@@ -10,7 +10,6 @@
 #include "TObjArray.h"
 #include "TMath.h"
 #include "TProfile3D.h"
-#include "TRandom3.h"
 
 #include <iostream>
 #include <memory>
@@ -117,7 +116,8 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
                        const char *outputFile = "myAnalysisResultV2PtRho.root",
                        int maxFilesPerConfig = -1, int maxConfigs = -1,
                        const char *analysisConfigFile =
-                           "../config/config.json")
+                           "../config/config.json",
+                       int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_v2_pt_rho_macro;
@@ -166,13 +166,13 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
                           centralityEdges, bootstrapEdges, nBootstrap));
   }
 
-  TRandom3 random(config.randomSeed);
   GFW gfw;
   CorrConfigManager manager(&gfw, config.flowEtaGap, config.flowEtaMax);
 
   const Long64_t processedEvents = forEachConfiguredEvent(
-      inputConfigFile, maxFilesPerConfig, maxConfigs,
-      [&](const Event &event, const CentralityConfig &)
+      inputConfigFile, maxFilesPerConfig, maxConfigs, shardIndex, shardCount,
+      [&](const Event &event, const CentralityConfig &,
+          const EventIdentity &identity)
       {
         gfw.Clear();
         const EventSamples samples =
@@ -192,7 +192,7 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
           hEta.Fill(track.GetEta());
           hPt.Fill(track.GetPt());
         }
-        const double randomValue = random.Rndm();
+        const double randomValue = bootstrapRandomValue(config.randomSeed, identity);
         const double bootstrap =
             sampleAxisCoordinate(bootstrapEdges, randomValue);
         const Event::PtMoments &chargedMoments = samples.charged;

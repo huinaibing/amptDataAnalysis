@@ -27,6 +27,7 @@ struct Event {
   };
 
   int eventID = 0;
+  int sourceFile = -1;
   double imp = 0.;
 
   std::vector<Track> particles;

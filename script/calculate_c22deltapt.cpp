@@ -6,7 +6,6 @@
 #include "TH1D.h"
 #include "TProfile2D.h"
 #include "TProfile3D.h"
-#include "TRandom3.h"
 
 #include <iostream>
 #include <memory>
@@ -124,7 +123,8 @@ void calculate_c22deltapt(
     const char *inputConfigFile = "../config/cent_cfg.json",
     const char *outputFile = "myAnalysisResultC22DeltaPt_pt04.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1, int usePure = -1,
-    const char *analysisConfigFile = "../config/config.json")
+    const char *analysisConfigFile = "../config/config.json",
+    int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_c22_delta_pt_macro;
@@ -163,13 +163,13 @@ void calculate_c22deltapt(
   eventCount.GetXaxis()->SetBinLabel(1, "Filtered event");
   eventCount.GetXaxis()->SetBinLabel(2, "after sel8");
 
-  TRandom3 random(config.randomSeed);
   GFW gfw;
   CorrConfigManager manager(&gfw, config.flowEtaGap, config.flowEtaMax);
 
   const Long64_t processedEvents = forEachConfiguredEvent(
-      inputConfigFile, maxFilesPerConfig, maxConfigs,
-      [&](const Event &event, const CentralityConfig &)
+      inputConfigFile, maxFilesPerConfig, maxConfigs, shardIndex, shardCount,
+      [&](const Event &event, const CentralityConfig &,
+          const EventIdentity &identity)
       {
         eventCount.Fill(0.5);
         eventCount.Fill(
@@ -182,7 +182,8 @@ void calculate_c22deltapt(
         const double centrality =
             centralityFromImpactParameter(event.imp, config);
         const double bootstrap =
-            sampleAxisCoordinate(bootstrapEdges, random.Rndm());
+            sampleAxisCoordinate(bootstrapEdges,
+                                 bootstrapRandomValue(config.randomSeed, identity));
         const Event::PtMoments &chargedMoments = samples.charged;
         if (chargedMoments.count == 0)
         {

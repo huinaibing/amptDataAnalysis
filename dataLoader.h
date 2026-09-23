@@ -10,6 +10,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 /**
  * Read particle rows from an AMPT TChain without copying them into an
@@ -35,6 +36,10 @@ public:
               mReader->mChain->GetTreeNumber()};
     }
 
+    int fileNumber() const {
+      return mReader->fileNumber(mReader->mChain->GetTreeNumber());
+    }
+
     Iterator &operator++() {
       ++mIndex;
       if (mIndex < mReader->entries()) {
@@ -54,31 +59,36 @@ public:
     Long64_t mIndex = 0;
   };
 
-  AMPTDataReader(const std::string &filePrefix, int nFiles)
+  AMPTDataReader(const std::string &filePrefix, int nFiles,
+                 int shardIndex = 0, int shardCount = 1)
       : mChain(std::make_unique<TChain>("particles")) {
-    if (nFiles < 0) {
-      throw std::invalid_argument("nFiles must not be negative");
+    if (nFiles < 0 || shardCount <= 0 || shardIndex < 0 ||
+        shardIndex >= shardCount) {
+      throw std::invalid_argument("Invalid file count or shard selection");
     }
 
     int addedFiles = 0;
-    for (int i = 0; i < nFiles; ++i) {
+    for (int i = shardIndex; i < nFiles; i += shardCount) {
       const TString fileName =
           TString::Format("%s%d.root", filePrefix.c_str(), i);
       if (mChain->Add(fileName, 0) > 0) {
         ++addedFiles;
+        mFileNumbers.push_back(i);
         std::cout << "Added input file: " << fileName << '\n';
       } else {
         std::cerr << "Skipped missing input file: " << fileName << '\n';
       }
     }
 
-    bindRequiredBranch("eventID", &mEventID);
-    bindRequiredBranch("nParticles", &mNParticles);
-    bindRequiredBranch("imp", &mImpactParameter);
-    bindRequiredBranch("pdgPid", &mPdgPid);
-    bindRequiredBranch("p_x", &mPx);
-    bindRequiredBranch("p_y", &mPy);
-    bindRequiredBranch("p_z", &mPz);
+    if (addedFiles > 0) {
+      bindRequiredBranch("eventID", &mEventID);
+      bindRequiredBranch("nParticles", &mNParticles);
+      bindRequiredBranch("imp", &mImpactParameter);
+      bindRequiredBranch("pdgPid", &mPdgPid);
+      bindRequiredBranch("p_x", &mPx);
+      bindRequiredBranch("p_y", &mPy);
+      bindRequiredBranch("p_z", &mPz);
+    }
 
     std::cout << "Loaded " << addedFiles << " files with " << entries()
               << " particle rows\n";
@@ -101,6 +111,7 @@ public:
 
   Iterator end() { return Iterator(this, entries()); }
   Long64_t entries() const { return mChain->GetEntries(); }
+  int fileNumber(int treeNumber) const { return mFileNumbers.at(treeNumber); }
 
 private:
   template <typename T> void bindRequiredBranch(const char *name, T *address) {
@@ -122,6 +133,7 @@ private:
   }
 
   std::unique_ptr<TChain> mChain;
+  std::vector<int> mFileNumbers;
   int mEventID = 0;
   int mNParticles = 0;
   int mPdgPid = 0;

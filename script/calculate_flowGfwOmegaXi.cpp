@@ -264,7 +264,8 @@ void calculate_flowGfwOmegaXi(
     const char *inputConfigFile = "../config/cent_cfg.json",
     const char *outputFile = "myAnalysisResultFlowGfwOmegaXi.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json")
+    const char *analysisConfigFile = "../config/config.json",
+    int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_gfw_omega_xi_macro;
@@ -451,8 +452,9 @@ void calculate_flowGfwOmegaXi(
   std::unique_ptr<THnSparseF> InvMassALambda = makeInvMass("InvMassALambda", 160, 1.08, 1.16);
 
   const Long64_t processedEvents = forEachConfiguredEvent(
-      inputConfigFile, maxFilesPerConfig, maxConfigs,
-      [&](const Event &event, const CentralityConfig &)
+      inputConfigFile, maxFilesPerConfig, maxConfigs, shardIndex, shardCount,
+      [&](const Event &event, const CentralityConfig &,
+          const EventIdentity &)
       {
         hEventCount.Fill(0.5);
         if (event.particles.size() < 1) {

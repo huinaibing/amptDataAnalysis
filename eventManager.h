@@ -57,6 +57,7 @@ public:
 
       mEvent = {};
       mEvent.eventID = sourceEventID;
+      mEvent.sourceFile = mCurrent.fileNumber();
       mEvent.imp = first.imp;
       if (first.nParticles > 0) {
         mEvent.particles.reserve(static_cast<std::size_t>(first.nParticles));
@@ -81,8 +82,9 @@ public:
     bool mAtEnd = true;
   };
 
-  AMPTEventReader(const std::string &filePrefix, int nFiles)
-      : mReader(filePrefix, nFiles) {}
+  AMPTEventReader(const std::string &filePrefix, int nFiles,
+                  int shardIndex = 0, int shardCount = 1)
+      : mReader(filePrefix, nFiles, shardIndex, shardCount) {}
 
   AMPTEventReader(const AMPTEventReader &) = delete;
   AMPTEventReader &operator=(const AMPTEventReader &) = delete;

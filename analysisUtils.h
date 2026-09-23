@@ -13,6 +13,8 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 
@@ -176,10 +178,36 @@ inline int limitedFileCount(int configured, int maxFilesPerConfig) {
                                : std::min(configured, maxFilesPerConfig);
 }
 
+struct EventIdentity {
+  std::size_t configIndex;
+  int fileNumber;
+  std::uint64_t eventIndex;
+};
+
+inline std::uint64_t mixEventKey(std::uint64_t value) {
+  value += 0x9e3779b97f4a7c15ULL;
+  value = (value ^ (value >> 30)) * 0xbf58476d1ce4e5b9ULL;
+  value = (value ^ (value >> 27)) * 0x94d049bb133111ebULL;
+  return value ^ (value >> 31);
+}
+
+inline double bootstrapRandomValue(unsigned int seed,
+                                   const EventIdentity &identity) {
+  std::uint64_t key = mixEventKey(seed);
+  key = mixEventKey(key ^ identity.configIndex);
+  key = mixEventKey(key ^ static_cast<std::uint64_t>(identity.fileNumber));
+  key = mixEventKey(key ^ identity.eventIndex);
+  return static_cast<double>(key >> 11) * (1.0 / 9007199254740992.0);
+}
+
 template <typename Callback>
 Long64_t forEachConfiguredEvent(const std::string &configFile,
                                 int maxFilesPerConfig, int maxConfigs,
+                                int shardIndex, int shardCount,
                                 Callback &&callback) {
+  if (shardCount <= 0 || shardIndex < 0 || shardIndex >= shardCount) {
+    throw std::invalid_argument("shardIndex must be within shardCount");
+  }
   if (maxFilesPerConfig == 0 || maxConfigs == 0) {
     return 0;
   }
@@ -193,17 +221,33 @@ Long64_t forEachConfiguredEvent(const std::string &configFile,
     const auto &configuration = configurations[i];
     const int nFiles =
         limitedFileCount(configuration.n_files, maxFilesPerConfig);
-    if (nFiles <= 0) {
+    if (nFiles <= shardIndex) {
       continue;
     }
 
-    AMPTEventReader reader(configuration.path, nFiles);
+    AMPTEventReader reader(configuration.path, nFiles, shardIndex, shardCount);
+    int currentFile = -1;
+    std::uint64_t eventIndex = 0;
     for (const auto &event : reader) {
-      callback(event, configuration);
+      if (event.sourceFile != currentFile) {
+        currentFile = event.sourceFile;
+        eventIndex = 0;
+      }
+      callback(event, configuration, EventIdentity{i, currentFile, eventIndex++});
       ++processedEvents;
     }
   }
   return processedEvents;
+}
+
+template <typename Callback>
+Long64_t forEachConfiguredEvent(const std::string &configFile,
+                                int maxFilesPerConfig, int maxConfigs,
+                                Callback &&callback) {
+  return forEachConfiguredEvent(
+      configFile, maxFilesPerConfig, maxConfigs, 0, 1,
+      [&](const Event &event, const CentralityConfig &configuration,
+          const EventIdentity &) { callback(event, configuration); });
 }
 } // namespace ampt_analysis
 

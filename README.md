@@ -32,6 +32,22 @@ root -l -b -q 'calculate_c22deltapt.cpp("../config/cent_cfg.json", "/tmp/c22.roo
 root -l -b -q 'calculate_pidptcorrelations.cpp("../config/cent_cfg.json", "/tmp/pidpt.root", 1, 1, "../config/config.json")'
 ```
 
+To run one of the four main macros across independent ROOT processes, load the
+O2Physics environment and run from `script/`:
+
+```bash
+./run_parallel.sh calculate_v2ptrho 4 ../config/cent_cfg.json /tmp/v2ptrho.root -1 -1 ../config/config.json
+```
+
+The second argument is the number of processes. The same command accepts
+`calculate_c22deltapt`, `calculate_pidptcorrelations`, or
+`calculate_flowGfwOmegaXi`. For `calculate_c22deltapt`, an optional final
+argument selects `usePure` (`-1`, `0`, or `1`). Each process reads a disjoint
+set of input file numbers; `hadd` merges their output after all succeed. The
+script prints the location of per-process ROOT files and logs. Direct macro
+calls still work; their optional final arguments are `shardIndex` and
+`shardCount`.
+
 ## Configuration
 
 Configuration files live in `config/`:

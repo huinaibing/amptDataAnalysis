@@ -6,7 +6,6 @@
 #include "TFile.h"
 #include "TH1D.h"
 #include "TObjArray.h"
-#include "TRandom3.h"
 
 #include <array>
 #include <cmath>
@@ -133,7 +132,8 @@ void calculate_pidptcorrelations(
     const char *inputConfigFile = "../config/cent_cfg.json",
     const char *outputFile = "myAnalysisResultPidPtCorrelations.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json")
+    const char *analysisConfigFile = "../config/config.json",
+    int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_pid_pt_correlations_macro;
@@ -154,10 +154,10 @@ void calculate_pidptcorrelations(
   TH1D eventCount("processPidPtCorrelations", "", 14, 0., 14.);
   setEventCountLabels(eventCount);
 
-  TRandom3 random(config.randomSeed);
   const Long64_t processedEvents = forEachConfiguredEvent(
-      inputConfigFile, maxFilesPerConfig, maxConfigs,
-      [&](const Event &event, const CentralityConfig &)
+      inputConfigFile, maxFilesPerConfig, maxConfigs, shardIndex, shardCount,
+      [&](const Event &event, const CentralityConfig &,
+          const EventIdentity &identity)
       {
         eventCount.Fill(0.5);
         if (event.particles.empty())
@@ -195,7 +195,7 @@ void calculate_pidptcorrelations(
 
         const double centrality =
             centralityFromImpactParameter(event.imp, config);
-        const double randomValue = random.Rndm();
+        const double randomValue = bootstrapRandomValue(config.randomSeed, identity);
         constexpr std::size_t pion = static_cast<std::size_t>(Species::Pion);
         constexpr std::size_t kaon = static_cast<std::size_t>(Species::Kaon);
         constexpr std::size_t proton =
