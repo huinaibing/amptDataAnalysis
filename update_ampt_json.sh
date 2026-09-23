@@ -1,6 +1,6 @@
 #!/bin/bash
 # update_ampt_json.sh
-# 查找 ampt_*_*.root,提取 id,统计每个 id 的文件总数,并生成/更新 JSON
+# 查找 ampt_*_*.root,提取每个 id 的文件编号范围,并生成/更新 JSON
 
 set -euo pipefail
 
@@ -8,35 +8,39 @@ set -euo pipefail
 SEARCH_DIR="/home/huinaibing/new_ampt_version/"                                              # 搜索目录
 BASE_PATH="/home/huinaibing/new_ampt_version/"              # JSON 中 path 前缀
 OUTPUT_JSON="/home/huinaibing/git_repo/amptDataAnalysis/config/cent_cfg.json"                             # 输出 JSON 路径
-STEP=1000                                                    # 向上取整的步长(比如 100
 # =================================
 
 # 检查搜索目录
 [ -d "$SEARCH_DIR" ] || { echo "目录不存在: $SEARCH_DIR" >&2; exit 1; }
 
-# 1. 一次遍历全部文件,直接按 id 计数
+# 1. 一次遍历全部文件,记录每个 id 的最小和最大文件编号
 # 避免为每个 id 重复扫描整个搜索目录
-declare -A id_count
+declare -A id_min id_max
 
 while IFS= read -r base; do
-    if [[ "$base" =~ ^ampt_([0-9]+)_[0-9]+\.root$ ]]; then
+    if [[ "$base" =~ ^ampt_([0-9]+)_([0-9]+)\.root$ ]]; then
         id="${BASH_REMATCH[1]}"
-        id_count[$id]=$(( ${id_count[$id]:-0} + 1 ))
+        number=$((10#${BASH_REMATCH[2]}))
+        if [[ ! -v id_min[$id] ]] || (( number < id_min[$id] )); then
+            id_min[$id]=$number
+        fi
+        if [[ ! -v id_max[$id] ]] || (( number > id_max[$id] )); then
+            id_max[$id]=$number
+        fi
     fi
 done < <(find "$SEARCH_DIR" -maxdepth 1 -type f -name "ampt_*_*.root" -printf '%f\n')
 
-if [ ${#id_count[@]} -eq 0 ]; then
+if [[ -z ${!id_max[*]} ]]; then
     echo "未找到匹配文件 ampt_*_*.root" >&2
     echo "[]" > "$OUTPUT_JSON"
     exit 0
 fi
 
-mapfile -t ids < <(printf '%s\n' "${!id_count[@]}" | sort -n)
+mapfile -t ids < <(printf '%s\n' "${!id_max[@]}" | sort -n)
 
 for id in "${ids[@]}"; do
-    real=${id_count[$id]}
-    id_count[$id]=$(( (real + STEP - 1) / STEP * STEP ))
-    echo "id=$id  实际=$real  ->  记录=${id_count[$id]}"
+    span=$(( id_max[$id] - id_min[$id] + 1 ))
+    echo "id=$id  编号=${id_min[$id]}..${id_max[$id]}  范围文件数=$span  ->  记录=$(( id_max[$id] + 1 ))"
 done
 
 {
@@ -50,11 +54,11 @@ done
         printf '    {\n'
         printf '        "path": "%sampt_%s_",\n' "$BASE_PATH" "$id"
         printf '        "bin_val": 0,\n'
-        printf '        "n_files": %s\n' "${id_count[$id]}"
+        printf '        "n_files": %s\n' "$(( id_max[$id] + 1 ))"
         printf '    }'
     done
     echo ""
     echo "]"
 } > "$OUTPUT_JSON"
 
-echo "已写入: $OUTPUT_JSON  (共 ${#id_count[@]} 个 id)"
+echo "已写入: $OUTPUT_JSON  (共 ${#id_max[@]} 个 id)"
