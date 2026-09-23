@@ -56,6 +56,34 @@ struct V2PtRhoQaConfig {
   AxisConfig etaAxis;
 };
 
+struct FlowPbpbPikpOutputConfig {
+  double cutEta = 0.8;
+  double cutPtPoiMin = 0.2;
+  double cutPtPoiMax = 10.;
+  double cutPtRefMin = 0.2;
+  double cutPtRefMax = 3.;
+  int nBootstrap = 10;
+  bool useNch = false;
+
+  AxisConfig ptAxis;
+  AxisConfig centralityAxis;
+  AxisConfig nchAxis;
+  AxisConfig qaCentralityAxis;
+  AxisConfig qaMultiplicityAxis;
+  AxisConfig qaPhiAxis;
+  AxisConfig qaEtaAxis;
+
+  std::vector<std::string> regionNames;
+  std::vector<double> regionEtaMin;
+  std::vector<double> regionEtaMax;
+  std::vector<int> regionPtDifferential;
+  std::vector<int> regionMasks;
+
+  std::vector<std::string> correlations;
+  std::vector<std::string> correlationHeads;
+  std::vector<int> correlationPtDifferential;
+};
+
 struct AnalysisConfig {
   // Flow particles cover [-flowEtaMax, -flowEtaGap] and
   // [flowEtaGap, flowEtaMax]. Mean-pT particles use an independent interval.
@@ -113,6 +141,7 @@ struct AnalysisConfig {
         16., 18., 20., 25., 30., 35., 40., 45., 50., 55., 60., 65., 70.,
         80., 90.}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
+  FlowPbpbPikpOutputConfig flowPbpbPikpOutput;
   bool c22UsePure = false;
 
   // These working values are set from the selected output mode by each macro.
@@ -235,6 +264,78 @@ readPidPtCorrelationsOutputConfig(const nlohmann::json &document,
           readAxisConfig(axes.at("bootstrap"), name + ".bootstrap")};
 }
 
+inline FlowPbpbPikpOutputConfig
+readFlowPbpbPikpOutputConfig(const nlohmann::json &document,
+                             const std::string &name) {
+  const auto &selection = document.at("selection");
+  const auto &axes = document.at("axes");
+  const auto &qaAxes = document.at("qa_axes");
+  const auto &regions = document.at("regions");
+  const auto &correlations = document.at("correlations");
+
+  FlowPbpbPikpOutputConfig config;
+  config.cutEta = selection.at("cut_eta").get<double>();
+  config.cutPtPoiMin = selection.at("poi_pt_min").get<double>();
+  config.cutPtPoiMax = selection.at("poi_pt_max").get<double>();
+  config.cutPtRefMin = selection.at("ref_pt_min").get<double>();
+  config.cutPtRefMax = selection.at("ref_pt_max").get<double>();
+  config.nBootstrap = document.at("n_bootstrap").get<int>();
+  config.useNch = document.at("use_nch").get<bool>();
+
+  config.ptAxis = readAxisConfig(axes.at("pt"), name + ".pt");
+  config.centralityAxis =
+      readAxisConfig(axes.at("centrality"), name + ".centrality");
+  config.nchAxis = readAxisConfig(axes.at("nch"), name + ".nch");
+  config.qaCentralityAxis = readAxisConfig(
+      qaAxes.at("centrality"), name + ".qa_axes.centrality");
+  config.qaMultiplicityAxis = readAxisConfig(
+      qaAxes.at("multiplicity"), name + ".qa_axes.multiplicity");
+  config.qaPhiAxis =
+      readAxisConfig(qaAxes.at("phi"), name + ".qa_axes.phi");
+  config.qaEtaAxis =
+      readAxisConfig(qaAxes.at("eta"), name + ".qa_axes.eta");
+
+  config.regionNames = regions.at("names").get<std::vector<std::string>>();
+  config.regionEtaMin = regions.at("eta_min").get<std::vector<double>>();
+  config.regionEtaMax = regions.at("eta_max").get<std::vector<double>>();
+  config.regionPtDifferential =
+      regions.at("pt_differential").get<std::vector<int>>();
+  config.regionMasks = regions.at("masks").get<std::vector<int>>();
+
+  config.correlations =
+      correlations.at("configs").get<std::vector<std::string>>();
+  config.correlationHeads =
+      correlations.at("heads").get<std::vector<std::string>>();
+  config.correlationPtDifferential =
+      correlations.at("pt_differential").get<std::vector<int>>();
+
+  const std::vector<std::size_t> regionSizes{
+      config.regionNames.size(), config.regionEtaMin.size(),
+      config.regionEtaMax.size(), config.regionPtDifferential.size(),
+      config.regionMasks.size()};
+  const std::vector<std::size_t> correlationSizes{
+      config.correlations.size(), config.correlationHeads.size(),
+      config.correlationPtDifferential.size()};
+  if (regionSizes.front() == 0 ||
+      !std::all_of(regionSizes.begin() + 1, regionSizes.end(),
+                   [&](std::size_t size) { return size == regionSizes[0]; })) {
+    throw std::runtime_error(name + " has mismatched GFW region vectors");
+  }
+  if (correlationSizes.front() == 0 ||
+      !std::all_of(correlationSizes.begin() + 1, correlationSizes.end(),
+                   [&](std::size_t size) {
+                     return size == correlationSizes[0];
+                   })) {
+    throw std::runtime_error(name +
+                             " has mismatched GFW correlation vectors");
+  }
+  if (config.cutEta <= 0. || config.cutPtPoiMax <= config.cutPtPoiMin ||
+      config.cutPtRefMax <= config.cutPtRefMin || config.nBootstrap < 0) {
+    throw std::runtime_error(name + " has invalid selection settings");
+  }
+  return config;
+}
+
 inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
   std::ifstream input(jsonPath);
   if (!input.is_open()) {
@@ -278,6 +379,8 @@ inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
   config.pidPtCorrelationsOutput = readPidPtCorrelationsOutputConfig(
       document.at("pid_pt_correlations_output"),
       "pid_pt_correlations_output");
+  config.flowPbpbPikpOutput = readFlowPbpbPikpOutputConfig(
+      document.at("flowPbpbPikp_output"), "flowPbpbPikp_output");
 
   if (config.flowEtaGap < 0. || config.flowEtaMax <= config.flowEtaGap) {
     throw std::runtime_error(
