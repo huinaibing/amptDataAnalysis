@@ -42,7 +42,8 @@ Configuration files live in `config/`:
 `config.json` controls the flow subevent eta boundaries, the independent
 mean-pT eta interval, charged/pion/kaon/proton pT ranges, strict or inclusive
 cut boundaries, impact-parameter centrality conversion, bootstrap seed,
-POI-POI versus POI-ref mode, and each macro's output axes. The
+POI-POI versus POI-ref mode, each macro's output axes, and the
+`v2_pt_rho_output.qa_axes` used by `hCent/hPt/hPhi/hEta`. The
 `pid_pt_correlations_output` section independently controls strict pT/eta
 boundaries, centrality bins, and bootstrap subsamples for
 `calculate_pidptcorrelations.cpp`. Every axis uses one of these two forms:

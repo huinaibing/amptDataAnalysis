@@ -13,7 +13,7 @@ inline void fillFlowProfile(FlowContainer &output, const char *profileName,
                             double centrality,
                             const CorrelationResult &correlation,
                             double random) {
-  if (correlation.hasPairs()) {
+  if (correlation.isPhysical()) {
     output.FillProfile(profileName, centrality, correlation.value(),
                        correlation.pairs, random);
   }
@@ -24,7 +24,7 @@ inline void fillFlowMeanPtProduct(FlowContainer &output,
                                   const CorrelationResult &correlation,
                                   const Event::PtMoments &moments,
                                   double random) {
-  if (correlation.hasPairs() && moments.count > 0) {
+  if (correlation.isPhysical() && moments.count > 0) {
     output.FillProfile(
         profileName, centrality, correlation.value() * moments.mean(),
         correlation.pairs * static_cast<double>(moments.count), random);
@@ -36,7 +36,7 @@ inline void fillTrackWeightedFlow(FlowContainer &output,
                                   const CorrelationResult &correlation,
                                   const Event::PtMoments &moments,
                                   double random) {
-  if (correlation.hasPairs() && moments.count > 0) {
+  if (correlation.isPhysical() && moments.count > 0) {
     output.FillProfile(profileName, centrality, correlation.value(),
                        correlation.pairs * static_cast<double>(moments.count),
                        random);
@@ -45,13 +45,17 @@ inline void fillTrackWeightedFlow(FlowContainer &output,
 
 inline void fillMeanPtMoments(FlowContainer &output, double centrality,
                               const Event::PtMoments &moments, double random) {
-  if (moments.count < 2) {
+  if (moments.count == 0) {
     return;
   }
 
   const double count = static_cast<double>(moments.count);
-  const double orderedPairs = count * (count - 1.);
   output.FillProfile("hMeanPt", centrality, moments.mean(), count, random);
+  if (moments.count < 2) {
+    return;
+  }
+
+  const double orderedPairs = count * (count - 1.);
   output.FillProfile("ptAve", centrality, moments.mean(), orderedPairs, random);
   output.FillProfile("ptSquareAve", centrality, moments.distinctPairMean(),
                      orderedPairs, random);
@@ -78,13 +82,13 @@ inline void fillV2PtRhoMeanPtProfiles(
                      count * poiRef.pairs);
   refRefProfile.Fill(meanPt, centrality, bootstrap, refRef.value(),
                      count * refRef.pairs);
+  meanPtProfile.Fill(meanPt, centrality, bootstrap, meanPt, count);
 
   // POI-ref/ref-ref are valid independently of the POI-POI result.
   if (!pure.isPhysical()) {
     return;
   }
   pureProfile.Fill(meanPt, centrality, bootstrap, pure.value(), pure.pairs);
-  meanPtProfile.Fill(meanPt, centrality, bootstrap, meanPt, count);
 }
 } // namespace ampt_analysis
 

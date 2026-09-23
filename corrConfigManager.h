@@ -218,9 +218,9 @@ private:
         // --- Reference (0-4) ---
         {CorrType::Ref08Gap22, "refP08 {2} refN08 {-2}", "Ref08Gap22", P::kRef,
          2},
-        {CorrType::Ref0Gap24, "refN {2 2} refP {-2 -2}", "Ref0Gap24", P::kRef,
+        {CorrType::Ref0Gap24, "reffull {2 2 -2 -2}", "Ref0Gap24", P::kRef,
          2},
-        {CorrType::Ref0Gap22, "refN {2} refP {-2}", "Ref0Gap22", P::kRef, 2},
+        {CorrType::Ref0Gap22, "reffull {2 -2}", "Ref0Gap22", P::kRef, 2},
         {CorrType::Ref08Gap32, "refP08 {3} refN08 {-3}", "Ref08Gap32", P::kRef,
          3},
         {CorrType::Ref08Gap34, "refP08 {3 3} refN08 {-3 -3}", "Ref08Gap34",
@@ -241,17 +241,17 @@ private:
          P::kPr, 2},
 
         // --- Full eta, 4th harmonic (11-16) ---
-        {CorrType::Pion0Gap24a, "poiPiN refN | olPiN {2 2} refP {-2 -2}",
+        {CorrType::Pion0Gap24a, "poiPiN reffull | olPiN {2 2 -2 -2}",
          "Pion0gap24a", P::kPi, 2},
-        {CorrType::Pion0Gap24b, "poiPiP refP | olPiP {2 2} refN {-2 -2}",
+        {CorrType::Pion0Gap24b, "poiPiP reffull | olPiP {2 2 -2 -2}",
          "Pion0gap24b", P::kPi, 2},
-        {CorrType::Kaon0Gap24a, "poiKaN refN | olKaN {2 2} refP {-2 -2}",
+        {CorrType::Kaon0Gap24a, "poiKaN reffull | olKaN {2 2 -2 -2}",
          "Kaon0gap24a", P::kKa, 2},
-        {CorrType::Kaon0Gap24b, "poiKaP refP | olKaP {2 2} refN {-2 -2}",
+        {CorrType::Kaon0Gap24b, "poiKaP reffull | olKaP {2 2 -2 -2}",
          "Kaon0gap24b", P::kKa, 2},
-        {CorrType::Prot0Gap24a, "poiPrN refN | olPrN {2 2} refP {-2 -2}",
+        {CorrType::Prot0Gap24a, "poiPrN reffull | olPrN {2 2 -2 -2}",
          "Prot0gap24a", P::kPr, 2},
-        {CorrType::Prot0Gap24b, "poiPrP refP | olPrP {2 2} refN {-2 -2}",
+        {CorrType::Prot0Gap24b, "poiPrP reffull | olPrP {2 2 -2 -2}",
          "Prot0gap24b", P::kPr, 2},
 
         // --- 0.8 eta, 3rd harmonic (17-22) ---
@@ -297,18 +297,18 @@ private:
          P::kPr, 3},
 
         // --- Full eta, 2nd harmonic (35-40) ---
-        {CorrType::Pion0Gap22a_Full, "poiPiN {2} refP {-2}", "Pion0gap22a",
-         P::kPi, 2},
-        {CorrType::Pion0Gap22b_Full, "poiPiP {2} refN {-2}", "Pion0gap22b",
-         P::kPi, 2},
-        {CorrType::Kaon0Gap22a_Full, "poiKaN {2} refP {-2}", "Kaon0gap22a",
-         P::kKa, 2},
-        {CorrType::Kaon0Gap22b_Full, "poiKaP {2} refN {-2}", "Kaon0gap22b",
-         P::kKa, 2},
-        {CorrType::Prot0Gap22a_Full, "poiPrN {2} refP {-2}", "Prot0gap22a",
-         P::kPr, 2},
-        {CorrType::Prot0Gap22b_Full, "poiPrP {2} refN {-2}", "Prot0gap22b",
-         P::kPr, 2},
+        {CorrType::Pion0Gap22a_Full, "poiPiN reffull | olPiN {2 -2}",
+         "Pion0gap22a", P::kPi, 2},
+        {CorrType::Pion0Gap22b_Full, "poiPiP reffull | olPiP {2 -2}",
+         "Pion0gap22b", P::kPi, 2},
+        {CorrType::Kaon0Gap22a_Full, "poiKaN reffull | olKaN {2 -2}",
+         "Kaon0gap22a", P::kKa, 2},
+        {CorrType::Kaon0Gap22b_Full, "poiKaP reffull | olKaP {2 -2}",
+         "Kaon0gap22b", P::kKa, 2},
+        {CorrType::Prot0Gap22a_Full, "poiPrN reffull | olPrN {2 -2}",
+         "Prot0gap22a", P::kPr, 2},
+        {CorrType::Prot0Gap22b_Full, "poiPrP reffull | olPrP {2 -2}",
+         "Prot0gap22b", P::kPr, 2},
     };
 
     // 自动生成 corrconfigs 和 name map

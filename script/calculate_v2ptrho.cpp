@@ -8,6 +8,7 @@
 #include "TFile.h"
 #include "TH1D.h"
 #include "TObjArray.h"
+#include "TMath.h"
 #include "TProfile3D.h"
 #include "TRandom3.h"
 
@@ -132,11 +133,23 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   const int nBootstrap = axisBinCount(config.v2PtRhoOutput.bootstrapAxis);
   const o2::framework::AxisSpec centralityAxis{centralityEdges,
                                                "Centrality (%)"};
+  const auto qaCentralityEdges =
+      makeAxisEdges(config.v2PtRhoQa.centralityAxis);
+  const auto qaPtEdges = makeAxisEdges(config.v2PtRhoQa.ptAxis);
+  const auto qaPhiEdges = makeAxisEdges(config.v2PtRhoQa.phiAxis);
+  const auto qaEtaEdges = makeAxisEdges(config.v2PtRhoQa.etaAxis);
+
   TH1D hCent("hCent",
              "Event centrality distribution (AMPT impact parameter);"
              "Centrality (%);Events",
-             static_cast<int>(centralityEdges.size()) - 1,
-             centralityEdges.data());
+             static_cast<int>(qaCentralityEdges.size()) - 1,
+             qaCentralityEdges.data());
+  TH1D hPt("hPt", "Track p_{T} distribution;p_{T} (GeV/#it{c});Tracks",
+           static_cast<int>(qaPtEdges.size()) - 1, qaPtEdges.data());
+  TH1D hPhi("hPhi", "Track #phi distribution;#phi (rad);Tracks",
+            static_cast<int>(qaPhiEdges.size()) - 1, qaPhiEdges.data());
+  TH1D hEta("hEta", "Track #eta distribution;#eta;Tracks",
+            static_cast<int>(qaEtaEdges.size()) - 1, qaEtaEdges.data());
 
   auto chargedNames = makeChargedProfileNames();
   auto pidNames = makePidProfileNames(*chargedNames);
@@ -168,10 +181,25 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
         const double centrality =
             centralityFromImpactParameter(event.imp, config);
         hCent.Fill(centrality);
+        for (const auto &track : event.particles)
+        {
+          if (!acceptsFlowTrack(track, config))
+          {
+            continue;
+          }
+          const double phi = track.GetPhi();
+          hPhi.Fill(phi >= 0. ? phi : phi + TMath::TwoPi());
+          hEta.Fill(track.GetEta());
+          hPt.Fill(track.GetPt());
+        }
         const double randomValue = random.Rndm();
         const double bootstrap =
             sampleAxisCoordinate(bootstrapEdges, randomValue);
         const Event::PtMoments &chargedMoments = samples.charged;
+        if (chargedMoments.count == 0)
+        {
+          return;
+        }
 
         const CorrelationResult chargedGap =
             calculateCorrelation(gfw, manager, CorrType::Ref08Gap22);
@@ -234,7 +262,7 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
           fillTrackWeightedFlow(*output.flow, "c22TrackWeightPID", centrality,
                                 pure, pidMoments, randomValue);
 
-          if (pidMoments.count > 1)
+          if (pidMoments.count > 0)
           {
             const CorrelationResult poiRef{poiRefA.numerator +
                                                poiRefB.numerator,
@@ -256,6 +284,9 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   }
 
   TDirectory *taskDirectory = outputFileHandle.mkdir("pid-flow-pt-corr");
+  writeObject(*taskDirectory, hPt);
+  writeObject(*taskDirectory, hPhi);
+  writeObject(*taskDirectory, hEta);
   writeObject(*taskDirectory, hCent);
   writeObject(*taskDirectory, chargedFlow);
   for (auto &output : speciesOutputs)

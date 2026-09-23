@@ -49,6 +49,13 @@ struct PidPtCorrelationsOutputConfig {
   AxisConfig bootstrapAxis;
 };
 
+struct V2PtRhoQaConfig {
+  AxisConfig centralityAxis;
+  AxisConfig ptAxis;
+  AxisConfig phiAxis;
+  AxisConfig etaAxis;
+};
+
 struct AnalysisConfig {
   // Flow particles cover [-flowEtaMax, -flowEtaGap] and
   // [flowEtaGap, flowEtaMax]. Mean-pT particles use an independent interval.
@@ -71,6 +78,18 @@ struct AnalysisConfig {
       {AxisBinning::Uniform, 90, 0., 90., {}},
       {AxisBinning::Uniform, 1000, 0., 3., {}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
+  V2PtRhoQaConfig v2PtRhoQa{
+      {AxisBinning::Uniform, 90, 0., 90., {}},
+      {AxisBinning::Variable,
+       0,
+       0.,
+       0.,
+       {0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65,
+        0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.10, 1.20, 1.30,
+        1.40, 1.50, 1.60, 1.70, 1.80, 1.90, 2.00, 2.20, 2.40, 2.60,
+        2.80, 3.00, 3.50, 4.00, 4.50, 5.00, 5.50, 6.00, 10.0}},
+      {AxisBinning::Uniform, 60, 0., 6.283185307179586, {}},
+      {AxisBinning::Uniform, 40, -1., 1., {}}};
   OutputConfig c22DeltaPtOutput{
       true,
       true,
@@ -197,6 +216,15 @@ inline OutputConfig readOutputConfig(const nlohmann::json &document,
           readAxisConfig(axes.at("bootstrap"), name + ".bootstrap")};
 }
 
+inline V2PtRhoQaConfig readV2PtRhoQaConfig(const nlohmann::json &document,
+                                          const std::string &name) {
+  const auto &axes = document.at("qa_axes");
+  return {readAxisConfig(axes.at("centrality"), name + ".centrality"),
+          readAxisConfig(axes.at("pt"), name + ".pt"),
+          readAxisConfig(axes.at("phi"), name + ".phi"),
+          readAxisConfig(axes.at("eta"), name + ".eta")};
+}
+
 inline PidPtCorrelationsOutputConfig
 readPidPtCorrelationsOutputConfig(const nlohmann::json &document,
                                   const std::string &name) {
@@ -238,8 +266,11 @@ inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
   const auto &bootstrap = document.at("bootstrap");
   config.randomSeed = bootstrap.at("random_seed").get<unsigned int>();
 
+  const auto &v2PtRhoOutput = document.at("v2_pt_rho_output");
   config.v2PtRhoOutput =
-      readOutputConfig(document.at("v2_pt_rho_output"), "v2_pt_rho_output");
+      readOutputConfig(v2PtRhoOutput, "v2_pt_rho_output");
+  config.v2PtRhoQa = readV2PtRhoQaConfig(
+      v2PtRhoOutput, "v2_pt_rho_output.qa_axes");
   const auto &c22Output = document.at("c22_delta_pt_output");
   config.c22DeltaPtOutput =
       readOutputConfig(c22Output, "c22_delta_pt_output");

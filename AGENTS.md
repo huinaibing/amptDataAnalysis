@@ -14,14 +14,14 @@
 
 | AMPT 入口脚本和函数 | 对应的 O2 主函数 | 对应输出 |
 | --- | --- | --- |
-| `script/calculate_v2ptrho.cpp` / `calculate_v2ptrho(...)` | `processData(...)` | `pid-flow-pt-corr` 下的 `FlowContainerCharged`、`FlowContainerPi`、`FlowContainerKa`、`FlowContainerPr`，以及 `meanptCentNbs` |
+| `script/calculate_v2ptrho.cpp` / `calculate_v2ptrho(...)` | `processData(...)` | `pid-flow-pt-corr` 下的 `FlowContainerCharged`、`FlowContainerPi`、`FlowContainerKa`、`FlowContainerPr`、`meanptCentNbs`，以及 `hPt/hPhi/hEta/hCent` QA 图 |
 | `script/calculate_c22deltapt.cpp` / `calculate_c22deltapt(...)` | `processDataC22DeltaPt(...)` | `pid-flow-pt-corr/hEventCount/processDataC22DeltaPt` 和 `pid-flow-pt-corr/c22DeltaPt` 下的 charged/PID profiles |
 | `script/calculate_pidptcorrelations.cpp` / `calculate_pidptcorrelations(...)` | `processPidPtCorrelations(...)` | `pid-flow-pt-corr/FlowContainerPidPtCorr` 和 `pid-flow-pt-corr/hEventCount/processPidPtCorrelations` |
 | `script/calculate_flowGfwOmegaXi.cpp` / `calculate_flowGfwOmegaXi(...)` | `processData(...)` | `flow-gfw-omega-xi` 下的 charged flow 基础图（`hPhi/hEta/hPt/hCent/hMult` 等）、`c22/c24/c32/c22Full` 及 charged dpt profiles、Xi/Omega/K0s/Lambda 的 dpt profiles 与不变质量谱 |
 
 修改 O2 主函数的结果对象名、目录、profile 列表、轴顺序、中心度 bin 或 bootstrap 定义时，要检查并同步修改对应的 AMPT 入口；修改 AMPT 输出时也要反向核对 O2 主函数。不要在两边为同一个物理量创建不同名字，也不要让 downstream 脚本通过 AMPT/O2 文件名分支来兼容本可保持一致的结构。
 
-AMPT truth 数据没有 reconstructed `sel8`、detector PID、track-quality、NUA/NUE 和 CCDB 校正。AMPT 入口使用 PDG code 区分带电粒子/粒子种类，以单位粒子权重填充，并通过 impact parameter 转换中心度；`calculate_flowGfwOmegaXi.cpp` 额外用 PDG code 和不变质量窗口重建 K0s、Lambda、Xi、Omega。“两边结构相同”指 ROOT 输出接口和物理量定义相同，不表示 detector-level 选择步骤或 event-count 每个 cut bin 的实际含义完全相同。AMPT 当前只生成适用于 truth 输入的 charged、pion、kaon、proton 及重建 V0/级联粒子结果，不生成 detector PID 失败对应的 unidentified 结果或 O2 QA/校正输出。
+AMPT truth 数据没有 reconstructed `sel8`、detector PID、track-quality、NUA/NUE 和 CCDB 校正。AMPT 入口使用 PDG code 区分带电粒子/粒子种类，以单位粒子权重填充，并通过 impact parameter 转换中心度；`calculate_flowGfwOmegaXi.cpp` 额外用 PDG code 和不变质量窗口重建 K0s、Lambda、Xi、Omega。“两边结构相同”指 ROOT 输出接口和物理量定义相同，不表示 detector-level 选择步骤或 event-count 每个 cut bin 的实际含义完全相同。AMPT 当前只生成适用于 truth 输入的 charged、pion、kaon、proton 及重建 V0/级联粒子结果，不生成 detector PID 失败对应的 unidentified 结果；除 `calculate_v2ptrho.cpp` 的 truth-level track/event QA 外，也不生成依赖 detector、NUA/NUE、CCDB 等信息的 O2 QA/校正输出。
 
 ## 四个入口脚本
 
@@ -30,6 +30,8 @@ AMPT truth 数据没有 reconstructed `sel8`、detector PID、track-quality、NU
 - 对应 `processData(...)`，用于生成 charged 和 pion/kaon/proton 的 flow、mean-pT、pT moments 以及 `v_2-[p_T]` 相关量。
 - charged 输出对象名为 `FlowContainerCharged`，PID 输出为 `FlowContainerPi`、`FlowContainerKa`、`FlowContainerPr`。PID 的两个 eta orientation 仍分开填入同一个 profile，以保持 O2 `processData` 的 profile error bookkeeping。
 - 同时在 `pid-flow-pt-corr/meanptCentNbs` 下保存 POI-ref、ref-ref、Pure 和 mean-pT 的 `TProfile3D`，用于 v2-pT-rho 后处理。
+- QA 图 `hPt/hPhi/hEta/hCent` 与 O2 `processData` 同名，统一保存在 `pid-flow-pt-corr`。`hCent` 每个事件填一次；`hPt/hPhi/hEta` 只填充通过 charged-flow 选择的 tracks（带电 PDG、charged pT 范围和 flow eta 范围），使用单位权重；`hPhi` 填入 `[0, 2π)`，以匹配 O2 默认 phi 轴。
+- 四个 QA 轴必须从 `v2_pt_rho_output.qa_axes` 读取，不得在入口脚本中写死 binning。`hCent` 使用 `qa_axes.centrality`，它与 FlowContainer 使用的 `v2_pt_rho_output.axes.centrality` 相互独立；两者可以默认取相同边界，但修改其中一个时不要隐式改变另一个。
 - 默认输出文件为 `myAnalysisResultV2PtRho.root`。
 
 ### `calculate_c22deltapt.cpp`
@@ -58,7 +60,7 @@ AMPT truth 数据没有 reconstructed `sel8`、detector PID、track-quality、NU
 
 - 四个函数的共同参数依次是 input-file JSON 路径、输出 ROOT 路径、每个 JSON entry 最多读取的文件数、最多读取的 JSON entry 数、分析配置 JSON 路径；两个数量参数为 `-1` 时表示全部处理。`calculate_c22deltapt(...)` 在分析配置路径之前额外有一个 `usePure` 参数，`calculate_flowGfwOmegaXi(...)` 与 pidFlowPtCorr 三个入口的参数顺序一致。
 - `config/cent_cfg.json` 列出 AMPT 输入路径前缀和文件数量；`config/config.json` 管理 flow eta subevent、独立的 mean-pT eta 范围、各粒子 pT 范围、impact-parameter 中心度转换、随机种子、Pure/POI-ref 模式以及各入口的输出轴。
-- `v2_pt_rho_output`、`c22_delta_pt_output` 和 `pid_pt_correlations_output` 分别控制三个 pidFlowPtCorr 对应入口的边界策略和输出 axes。`calculate_flowGfwOmegaXi.cpp` 的输出轴按 O2 `flowGfwOmegaXi` 默认值硬编码（charged pT 38 bins、V0/级联 pT 14 bins、中心度 10 bins、mass bins 等），以保持与 O2 输出结构完全一致；修改 O2 默认 binning 时必须同步修改该脚本。修改 binning 时要保证其 O2 对应输出及 downstream 脚本仍兼容。
+- `v2_pt_rho_output`、`c22_delta_pt_output` 和 `pid_pt_correlations_output` 分别控制三个 pidFlowPtCorr 对应入口的边界策略和输出 axes。其中 `v2_pt_rho_output.axes` 控制 FlowContainer/profile 的分析轴，`v2_pt_rho_output.qa_axes.{centrality,pt,phi,eta}` 单独控制 `hCent/hPt/hPhi/hEta` QA 轴；新增或修改 v2-pT-rho QA 图时必须沿用它，并继续使用现有 uniform/variable `AxisConfig` 格式。`calculate_flowGfwOmegaXi.cpp` 的输出轴按 O2 `flowGfwOmegaXi` 默认值硬编码（charged pT 38 bins、V0/级联 pT 14 bins、中心度 10 bins、mass bins 等），以保持与 O2 输出结构完全一致；修改 O2 默认 binning 时必须同步修改该脚本。修改 binning 时要保证其 O2 对应输出及 downstream 脚本仍兼容。
 - 入口宏应从 `script/` 目录在 O2Physics 环境中由 ROOT 直接运行，不要编译。
 
 ```bash
