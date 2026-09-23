@@ -80,6 +80,19 @@ alienv --work-dir /home/huinaibing/o2_workdir/sw \
 
 不要编译 ROOT 代码；优先直接运行 ROOT 宏、脚本或命令，只有用户明确要求时才编译。
 
+## 新增脚本的要点
+
+在 `script/` 下新增独立 ROOT 入口时，按以下方式写，尽量复用现有公共逻辑：
+
+- 主函数放 `script/*.cpp`，入口宏由 ROOT 直接运行，不要编译；运行环境与上面一致：`alienv --work-dir /home/huinaibing/o2_workdir/sw setenv O2Physics/latest -c bash -lc 'cd /home/huinaibing/git_repo/amptDataAnalysis/script && root -l -b -q macro.cpp'`。
+- 事件和粒子读取使用 `analysisUtils.h` 的 `forEachConfiguredEvent(...)` 遍历 `Event`，再遍历 `event.particles` 里的 `Track`；粒子量用 `GetPt()/GetEta()/GetPhi()` 和 `pdgPid` 获取，不要直接访问 ROOT branch。
+- 粒子种类用 `isChargedPdg`、`findSpecies`、`ptRangeForPdg` 和 `SpeciesDefinition` 判断；中心度用 `centralityFromImpactParameter(event.imp, config)`，不要写死转换公式。
+- 公共逻辑留在 `analysisConfig.h`/`analysisUtils.h`/`utils.h` 等头文件中，`script/` 入口只负责本 workflow 的编排和输出。
+- 新增选择 cut 和输出轴时，在 `config/config.json` 下加一个 `xxx_output` 段（包含 `selection` 和 `axes`），沿用现有 uniform/variable `AxisConfig` 格式；同时在 `analysisConfig.h` 中增加对应 struct、默认值和 `readXxxOutputConfig(...)`，并在 `loadAnalysisConfig` 中解析。脚本用 `makeAxisEdges` 取轴，不要在脚本里写死 binning。
+- 函数参数沿用统一顺序：`inputConfigFile, outputFile, maxFilesPerConfig, maxConfigs, analysisConfigFile`；两个数量参数为 `-1` 表示全部处理。确有额外模式参数时再参照 `calculate_c22deltapt` 插入。
+- 输出写入独立 `TDirectory`。如果下游还要做归一化或组装（例如 `1/N_ev d²N/dp_T dη`），上游只输出原始计数，不在这里组装；事件计数用 `hEventCount` 或 `hCent`，需要分中心度画图时输出 pT-centrality 的 `TH2D` 或 pT-η-centrality 的 `TH3D`，让下游自行切中心度 bin。
+- 完成后至少用 `maxFilesPerConfig=1, maxConfigs=1` 在 O2 环境中跑一次，确认配置解析、事件/粒子读取和输出对象路径正确。
+
 ## 通用要求
 
 - 修改前阅读相关代码和配置，遵循项目已有的风格和运行方式。

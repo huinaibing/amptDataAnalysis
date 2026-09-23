@@ -5,8 +5,8 @@
 set -euo pipefail
 
 # ============ 可配置项 ============
-SEARCH_DIR="/home/huinaibing/hydro_result"
-BASE_PATH="/home/huinaibing/hydro_result"
+SEARCH_DIR="/home/huinaibing/hydro_result/"
+BASE_PATH="/home/huinaibing/hydro_result/"
 OUTPUT_JSON="/home/huinaibing/git_repo/amptDataAnalysis/config/cent_cfg.json"
 STEP=200
 # =================================

@@ -56,6 +56,17 @@ struct V2PtRhoQaConfig {
   AxisConfig etaAxis;
 };
 
+struct PtSpectraOutputConfig {
+  double etaMin = -0.8;
+  double etaMax = 0.8;
+  bool strictPtBounds = true;
+  bool strictEtaBounds = true;
+  AxisConfig ptAxis;
+  AxisConfig centralityAxis;
+  AxisConfig phiAxis;
+  AxisConfig etaAxis;
+};
+
 struct FlowPbpbPikpOutputConfig {
   double cutEta = 0.8;
   double cutPtPoiMin = 0.2;
@@ -142,6 +153,22 @@ struct AnalysisConfig {
         80., 90.}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
   FlowPbpbPikpOutputConfig flowPbpbPikpOutput;
+  PtSpectraOutputConfig ptSpectraOutput{
+      -0.8,
+      0.8,
+      true,
+      true,
+      {AxisBinning::Variable,
+       0,
+       0.,
+       0.,
+       {0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65,
+        0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.10, 1.20, 1.30,
+        1.40, 1.50, 1.60, 1.70, 1.80, 1.90, 2.00, 2.20, 2.40, 2.60,
+        2.80, 3.00, 3.50, 4.00, 4.50, 5.00, 5.50, 6.00, 10.0}},
+      {AxisBinning::Uniform, 90, 0., 90., {}},
+      {AxisBinning::Uniform, 60, 0., 6.283185307179586, {}},
+      {AxisBinning::Uniform, 40, -1., 1., {}}};
   bool c22UsePure = false;
 
   // These working values are set from the selected output mode by each macro.
@@ -264,6 +291,30 @@ readPidPtCorrelationsOutputConfig(const nlohmann::json &document,
           readAxisConfig(axes.at("bootstrap"), name + ".bootstrap")};
 }
 
+inline PtSpectraOutputConfig
+readPtSpectraOutputConfig(const nlohmann::json &document,
+                          const std::string &name) {
+  const auto &selection = document.at("selection");
+  const auto &axes = document.at("axes");
+  PtSpectraOutputConfig config;
+  config.etaMin = selection.at("eta_min").get<double>();
+  config.etaMax = selection.at("eta_max").get<double>();
+  config.strictPtBounds =
+      selection.at("strict_pt_bounds").get<bool>();
+  config.strictEtaBounds =
+      selection.at("strict_eta_bounds").get<bool>();
+  config.ptAxis = readAxisConfig(axes.at("pt"), name + ".pt");
+  config.centralityAxis =
+      readAxisConfig(axes.at("centrality"), name + ".centrality");
+  config.phiAxis = readAxisConfig(axes.at("phi"), name + ".phi");
+  config.etaAxis = readAxisConfig(axes.at("eta"), name + ".eta");
+  if (config.etaMax <= config.etaMin) {
+    throw std::runtime_error(name +
+                             " requires eta_min < eta_max");
+  }
+  return config;
+}
+
 inline FlowPbpbPikpOutputConfig
 readFlowPbpbPikpOutputConfig(const nlohmann::json &document,
                              const std::string &name) {
@@ -381,6 +432,9 @@ inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
       "pid_pt_correlations_output");
   config.flowPbpbPikpOutput = readFlowPbpbPikpOutputConfig(
       document.at("flowPbpbPikp_output"), "flowPbpbPikp_output");
+
+  config.ptSpectraOutput = readPtSpectraOutputConfig(
+      document.at("pt_spectra_output"), "pt_spectra_output");
 
   if (config.flowEtaGap < 0. || config.flowEtaMax <= config.flowEtaGap) {
     throw std::runtime_error(
