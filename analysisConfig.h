@@ -69,6 +69,7 @@ struct PtSpectraOutputConfig {
   AxisConfig phiAxis;
   AxisConfig etaAxis;
   AxisConfig rapidityAxis;
+  AxisConfig impactParameterAxis;
 };
 
 struct FlowPbpbPikpOutputConfig {
@@ -322,6 +323,8 @@ readPtSpectraOutputConfig(const nlohmann::json &document,
   config.etaAxis = readAxisConfig(axes.at("eta"), name + ".eta");
   config.rapidityAxis =
       readAxisConfig(axes.at("rapidity"), name + ".rapidity");
+  config.impactParameterAxis = readAxisConfig(
+      axes.at("impact_parameter"), name + ".impact_parameter");
   if (config.etaMax <= config.etaMin) {
     throw std::runtime_error(name +
                              " requires eta_min < eta_max");

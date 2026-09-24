@@ -843,6 +843,12 @@
                 "bins": 1,
                 "min": -0.5,
                 "max": 0.5
+            },
+            "impact_parameter": {
+                "binning": "uniform",
+                "bins": 50,
+                "min": 0.0,
+                "max": 25.0
             }
         }
     }

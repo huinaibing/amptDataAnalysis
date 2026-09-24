@@ -60,6 +60,8 @@ void calculate_ptspectra(
   const auto etaEdges = makeAxisEdges(config.ptSpectraOutput.etaAxis);
   const auto rapidityEdges =
       makeAxisEdges(config.ptSpectraOutput.rapidityAxis);
+  const auto impactParameterEdges =
+      makeAxisEdges(config.ptSpectraOutput.impactParameterAxis);
 
   const int nPtBins = static_cast<int>(ptEdges.size()) - 1;
   const int nCentralityBins = static_cast<int>(centralityEdges.size()) - 1;
@@ -85,6 +87,10 @@ void calculate_ptspectra(
             static_cast<int>(phiEdges.size()) - 1, phiEdges.data());
   TH1D hEta("hEta", "Track #eta distribution;#eta;Tracks",
             static_cast<int>(etaEdges.size()) - 1, etaEdges.data());
+  TH1D hImpactParameter(
+      "hImpactParameter", "Collision impact parameter distribution; b (fm);Events",
+      static_cast<int>(impactParameterEdges.size()) - 1,
+      impactParameterEdges.data());
 
   TH1D hEventCount("hEventCount", "Events accepted;all events;Events", 1,
                    0., 1.);
@@ -174,6 +180,7 @@ void calculate_ptspectra(
       {
         const double centrality =
             centralityFromImpactParameter(event.imp, config);
+        hImpactParameter.Fill(event.imp);
         hCent.Fill(centrality);
         hEventCount.Fill(0.5);
 
@@ -305,6 +312,7 @@ void calculate_ptspectra(
   writeObject(*taskDirectory, hCent);
   writeObject(*taskDirectory, hPhi);
   writeObject(*taskDirectory, hEta);
+  writeObject(*taskDirectory, hImpactParameter);
 
   outputFileHandle.Close();
   std::cout << "Processed " << processedEvents << " AMPT events; wrote "
