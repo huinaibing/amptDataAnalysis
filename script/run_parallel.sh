@@ -3,6 +3,7 @@ set -euo pipefail
 
 usage() {
     echo "Usage: $0 <macro> <workers> [input-json] [output-root] [max-files] [max-configs] [analysis-json] [use-pure-for-c22]" >&2
+    echo "Macros: calculate_v2ptrho, calculate_c22deltapt, calculate_pidptcorrelations, calculate_flowGfwOmegaXi, calculate_flowPbpbPikp, calculate_ptspectra" >&2
     exit 2
 }
 
@@ -14,6 +15,8 @@ case "$macro" in
     calculate_c22deltapt) default_output=myAnalysisResultC22DeltaPt_pt04.root ;;
     calculate_pidptcorrelations) default_output=myAnalysisResultPidPtCorrelations.root ;;
     calculate_flowGfwOmegaXi) default_output=myAnalysisResultFlowGfwOmegaXi.root ;;
+    calculate_flowPbpbPikp) default_output=myAnalysisResultFlowPbpbPikp.root ;;
+    calculate_ptspectra) default_output=myAnalysisResultPtSpectra.root ;;
     *) usage ;;
 esac
 [[ $workers =~ ^[1-9][0-9]*$ ]] || usage

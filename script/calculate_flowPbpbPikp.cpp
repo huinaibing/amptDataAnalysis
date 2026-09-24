@@ -12,7 +12,6 @@
 #include "TMath.h"
 #include "TObjArray.h"
 #include "TProfile.h"
-#include "TRandom3.h"
 
 #include <cmath>
 #include <complex>
@@ -123,7 +122,8 @@ void calculate_flowPbpbPikp(
     const char *inputConfigFile = "../config/cent_cfg.json",
     const char *outputFile = "myAnalysisResultFlowPbpbPikp.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json")
+    const char *analysisConfigFile = "../config/config.json",
+    int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_flow_pbpb_pikp_macro;
@@ -213,10 +213,10 @@ void calculate_flowPbpbPikp(
       "c22_full_ch_Nch", "", static_cast<int>(nchEdges.size()) - 1,
       nchEdges.data());
 
-  TRandom3 random(analysisConfig.randomSeed);
   const Long64_t processedEvents = forEachConfiguredEvent(
-      inputConfigFile, maxFilesPerConfig, maxConfigs,
-      [&](const Event &event, const CentralityConfig &)
+      inputConfigFile, maxFilesPerConfig, maxConfigs, shardIndex, shardCount,
+      [&](const Event &event, const CentralityConfig &,
+          const EventIdentity &identity)
       {
         std::vector<const Track *> selectedTracks;
         selectedTracks.reserve(event.particles.size());
@@ -281,7 +281,8 @@ void calculate_flowPbpbPikp(
         fillProfile(gfw, correlations.front(), c22FullCharged, centrality);
         fillProfile(gfw, correlations.front(), c22FullChargedNch, nTotal);
         const double activity = config.useNch ? nTotal : centrality;
-        const double randomValue = random.Rndm();
+        const double randomValue =
+            bootstrapRandomValue(analysisConfig.randomSeed, identity);
         for (const GFW::CorrConfig &correlation : correlations)
         {
           fillFlowContainer(gfw, correlation, flowContainer, activity,

@@ -8,6 +8,7 @@
 #include "TH3D.h"
 #include "TMath.h"
 
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -16,6 +17,9 @@
 namespace ampt_pt_spectra_macro
 {
   constexpr const char *kTaskDirectory = "pt-spectra";
+  constexpr double kPionMass = 0.1395704;
+  constexpr double kKaonMass = 0.493677;
+  constexpr double kProtonMass = 0.9382721;
 
   void writeObject(TDirectory &directory, TObject &object)
   {
@@ -39,7 +43,8 @@ void calculate_ptspectra(
     const char *inputConfigFile = "../config/cent_cfg.json",
     const char *outputFile = "myAnalysisResultPtSpectra.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json")
+    const char *analysisConfigFile = "../config/config.json",
+    int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_pt_spectra_macro;
@@ -53,10 +58,13 @@ void calculate_ptspectra(
       makeAxisEdges(config.ptSpectraOutput.centralityAxis);
   const auto phiEdges = makeAxisEdges(config.ptSpectraOutput.phiAxis);
   const auto etaEdges = makeAxisEdges(config.ptSpectraOutput.etaAxis);
+  const auto rapidityEdges =
+      makeAxisEdges(config.ptSpectraOutput.rapidityAxis);
 
   const int nPtBins = static_cast<int>(ptEdges.size()) - 1;
   const int nCentralityBins = static_cast<int>(centralityEdges.size()) - 1;
   const int nEtaBins = static_cast<int>(etaEdges.size()) - 1;
+  const int nRapidityBins = static_cast<int>(rapidityEdges.size()) - 1;
 
   TH1D hPtCharged("hPtCharged",
                   "Charged particle p_{T} spectrum;p_{T} (GeV/#it{c});"
@@ -86,7 +94,7 @@ void calculate_ptspectra(
                      "#eta",
                      nPtBins, ptEdges.data(), nEtaBins, etaEdges.data());
   TH2D hPtEtaPion("hPtEtaPion", "#pi raw p_{T}-#eta counts;"
-                               "p_{T} (GeV/#it{c});#eta",
+                                "p_{T} (GeV/#it{c});#eta",
                   nPtBins, ptEdges.data(), nEtaBins, etaEdges.data());
   TH2D hPtEtaKaon("hPtEtaKaon", "K raw p_{T}-#eta counts;"
                                 "p_{T} (GeV/#it{c});#eta",
@@ -94,6 +102,16 @@ void calculate_ptspectra(
   TH2D hPtEtaProton("hPtEtaProton", "p raw p_{T}-#eta counts;"
                                     "p_{T} (GeV/#it{c});#eta",
                     nPtBins, ptEdges.data(), nEtaBins, etaEdges.data());
+
+  TH2D hPtYPion("hPtYPion", "#pi raw p_{T}-y counts;"
+                            "p_{T} (GeV/#it{c});y",
+                nPtBins, ptEdges.data(), nRapidityBins, rapidityEdges.data());
+  TH2D hPtYKaon("hPtYKaon", "K raw p_{T}-y counts;"
+                            "p_{T} (GeV/#it{c});y",
+                nPtBins, ptEdges.data(), nRapidityBins, rapidityEdges.data());
+  TH2D hPtYProton("hPtYProton", "p raw p_{T}-y counts;"
+                                "p_{T} (GeV/#it{c});y",
+                  nPtBins, ptEdges.data(), nRapidityBins, rapidityEdges.data());
 
   TH2D hPtCentCharged("hPtCentCharged",
                       "Charged raw p_{T}-centrality counts;"
@@ -134,9 +152,25 @@ void calculate_ptspectra(
                         nPtBins, ptEdges.data(), nEtaBins, etaEdges.data(),
                         nCentralityBins, centralityEdges.data());
 
+  TH3D hPtYCentPion("hPtYCentPion",
+                    "#pi raw p_{T}-y-centrality counts;"
+                    "p_{T} (GeV/#it{c});y;Centrality (%)",
+                    nPtBins, ptEdges.data(), nRapidityBins, rapidityEdges.data(),
+                    nCentralityBins, centralityEdges.data());
+  TH3D hPtYCentKaon("hPtYCentKaon",
+                    "K raw p_{T}-y-centrality counts;"
+                    "p_{T} (GeV/#it{c});y;Centrality (%)",
+                    nPtBins, ptEdges.data(), nRapidityBins, rapidityEdges.data(),
+                    nCentralityBins, centralityEdges.data());
+  TH3D hPtYCentProton("hPtYCentProton",
+                      "p raw p_{T}-y-centrality counts;"
+                      "p_{T} (GeV/#it{c});y;Centrality (%)",
+                      nPtBins, ptEdges.data(), nRapidityBins, rapidityEdges.data(),
+                      nCentralityBins, centralityEdges.data());
+
   const Long64_t processedEvents = forEachConfiguredEvent(
-      inputConfigFile, maxFilesPerConfig, maxConfigs,
-      [&](const Event &event, const CentralityConfig &)
+      inputConfigFile, maxFilesPerConfig, maxConfigs, shardIndex, shardCount,
+      [&](const Event &event, const CentralityConfig &, const EventIdentity &)
       {
         const double centrality =
             centralityFromImpactParameter(event.imp, config);
@@ -152,7 +186,7 @@ void calculate_ptspectra(
                         eta < config.ptSpectraOutput.etaMax
                   : eta >= config.ptSpectraOutput.etaMin &&
                         eta <= config.ptSpectraOutput.etaMax;
-          if (!etaOk || !isChargedPdg(track.pdgPid))
+          if (!isChargedPdg(track.pdgPid))
           {
             continue;
           }
@@ -160,7 +194,7 @@ void calculate_ptspectra(
           const double pt = track.GetPt();
           const int absPdg = std::abs(track.pdgPid);
 
-          if (config.chargedPt.contains(pt, config.strictPtBounds))
+          if (etaOk && config.chargedPt.contains(pt, config.strictPtBounds))
           {
             hPtCharged.Fill(pt);
             hPhi.Fill(phiInZeroTwoPi(track.GetPhi()));
@@ -178,25 +212,60 @@ void calculate_ptspectra(
             continue;
           }
 
+          const double mass = species->species == Species::Pion ? kPionMass : species->species == Species::Kaon ? kKaonMass
+                                                                                                                : kProtonMass;
+          const double rapidity =
+              std::asinh(track.p_z / std::hypot(pt, mass));
+          const bool rapidityOk =
+              config.ptSpectraOutput.strictRapidityBounds
+                  ? rapidity > config.ptSpectraOutput.rapidityMin &&
+                        rapidity < config.ptSpectraOutput.rapidityMax
+                  : rapidity >= config.ptSpectraOutput.rapidityMin &&
+                        rapidity <= config.ptSpectraOutput.rapidityMax;
+
           switch (species->species)
           {
           case Species::Pion:
-            hPtPion.Fill(pt);
-            hPtEtaPion.Fill(pt, eta);
-            hPtCentPion.Fill(pt, centrality);
-            hPtEtaCentPion.Fill(pt, eta, centrality);
+            if (etaOk)
+            {
+              hPtPion.Fill(pt);
+              hPtEtaPion.Fill(pt, eta);
+              hPtCentPion.Fill(pt, centrality);
+              hPtEtaCentPion.Fill(pt, eta, centrality);
+            }
+            if (rapidityOk)
+            {
+              hPtYPion.Fill(pt, rapidity);
+              hPtYCentPion.Fill(pt, rapidity, centrality);
+            }
             break;
           case Species::Kaon:
-            hPtKaon.Fill(pt);
-            hPtEtaKaon.Fill(pt, eta);
-            hPtCentKaon.Fill(pt, centrality);
-            hPtEtaCentKaon.Fill(pt, eta, centrality);
+            if (etaOk)
+            {
+              hPtKaon.Fill(pt);
+              hPtEtaKaon.Fill(pt, eta);
+              hPtCentKaon.Fill(pt, centrality);
+              hPtEtaCentKaon.Fill(pt, eta, centrality);
+            }
+            if (rapidityOk)
+            {
+              hPtYKaon.Fill(pt, rapidity);
+              hPtYCentKaon.Fill(pt, rapidity, centrality);
+            }
             break;
           case Species::Proton:
-            hPtProton.Fill(pt);
-            hPtEtaProton.Fill(pt, eta);
-            hPtCentProton.Fill(pt, centrality);
-            hPtEtaCentProton.Fill(pt, eta, centrality);
+            if (etaOk)
+            {
+              hPtProton.Fill(pt);
+              hPtEtaProton.Fill(pt, eta);
+              hPtCentProton.Fill(pt, centrality);
+              hPtEtaCentProton.Fill(pt, eta, centrality);
+            }
+            if (rapidityOk)
+            {
+              hPtYProton.Fill(pt, rapidity);
+              hPtYCentProton.Fill(pt, rapidity, centrality);
+            }
             break;
           }
         }
@@ -219,6 +288,9 @@ void calculate_ptspectra(
   writeObject(*taskDirectory, hPtEtaPion);
   writeObject(*taskDirectory, hPtEtaKaon);
   writeObject(*taskDirectory, hPtEtaProton);
+  writeObject(*taskDirectory, hPtYPion);
+  writeObject(*taskDirectory, hPtYKaon);
+  writeObject(*taskDirectory, hPtYProton);
   writeObject(*taskDirectory, hPtCentCharged);
   writeObject(*taskDirectory, hPtCentPion);
   writeObject(*taskDirectory, hPtCentKaon);
@@ -227,6 +299,9 @@ void calculate_ptspectra(
   writeObject(*taskDirectory, hPtEtaCentPion);
   writeObject(*taskDirectory, hPtEtaCentKaon);
   writeObject(*taskDirectory, hPtEtaCentProton);
+  writeObject(*taskDirectory, hPtYCentPion);
+  writeObject(*taskDirectory, hPtYCentKaon);
+  writeObject(*taskDirectory, hPtYCentProton);
   writeObject(*taskDirectory, hCent);
   writeObject(*taskDirectory, hPhi);
   writeObject(*taskDirectory, hEta);

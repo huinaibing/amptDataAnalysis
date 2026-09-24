@@ -59,12 +59,16 @@ struct V2PtRhoQaConfig {
 struct PtSpectraOutputConfig {
   double etaMin = -0.8;
   double etaMax = 0.8;
+  double rapidityMin = -0.5;
+  double rapidityMax = 0.5;
   bool strictPtBounds = true;
   bool strictEtaBounds = true;
+  bool strictRapidityBounds = true;
   AxisConfig ptAxis;
   AxisConfig centralityAxis;
   AxisConfig phiAxis;
   AxisConfig etaAxis;
+  AxisConfig rapidityAxis;
 };
 
 struct FlowPbpbPikpOutputConfig {
@@ -156,6 +160,9 @@ struct AnalysisConfig {
   PtSpectraOutputConfig ptSpectraOutput{
       -0.8,
       0.8,
+      -0.5,
+      0.5,
+      true,
       true,
       true,
       {AxisBinning::Variable,
@@ -168,7 +175,8 @@ struct AnalysisConfig {
         2.80, 3.00, 3.50, 4.00, 4.50, 5.00, 5.50, 6.00, 10.0}},
       {AxisBinning::Uniform, 90, 0., 90., {}},
       {AxisBinning::Uniform, 60, 0., 6.283185307179586, {}},
-      {AxisBinning::Uniform, 40, -1., 1., {}}};
+      {AxisBinning::Uniform, 40, -1., 1., {}},
+      {AxisBinning::Uniform, 1, -0.5, 0.5, {}}};
   bool c22UsePure = false;
 
   // These working values are set from the selected output mode by each macro.
@@ -299,18 +307,32 @@ readPtSpectraOutputConfig(const nlohmann::json &document,
   PtSpectraOutputConfig config;
   config.etaMin = selection.at("eta_min").get<double>();
   config.etaMax = selection.at("eta_max").get<double>();
+  config.rapidityMin = selection.at("rapidity_min").get<double>();
+  config.rapidityMax = selection.at("rapidity_max").get<double>();
   config.strictPtBounds =
       selection.at("strict_pt_bounds").get<bool>();
   config.strictEtaBounds =
       selection.at("strict_eta_bounds").get<bool>();
+  config.strictRapidityBounds =
+      selection.at("strict_rapidity_bounds").get<bool>();
   config.ptAxis = readAxisConfig(axes.at("pt"), name + ".pt");
   config.centralityAxis =
       readAxisConfig(axes.at("centrality"), name + ".centrality");
   config.phiAxis = readAxisConfig(axes.at("phi"), name + ".phi");
   config.etaAxis = readAxisConfig(axes.at("eta"), name + ".eta");
+  config.rapidityAxis =
+      readAxisConfig(axes.at("rapidity"), name + ".rapidity");
   if (config.etaMax <= config.etaMin) {
     throw std::runtime_error(name +
                              " requires eta_min < eta_max");
+  }
+  const auto rapidityEdges = makeAxisEdges(config.rapidityAxis);
+  if (config.rapidityMax <= config.rapidityMin ||
+      rapidityEdges.front() != config.rapidityMin ||
+      rapidityEdges.back() != config.rapidityMax ||
+      rapidityEdges.size() != 2) {
+    throw std::runtime_error(name +
+                             " requires one rapidity bin spanning rapidity_min to rapidity_max");
   }
   return config;
 }

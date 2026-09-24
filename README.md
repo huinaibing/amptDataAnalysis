@@ -41,7 +41,8 @@ O2Physics environment and run from `script/`:
 
 The second argument is the number of processes. The same command accepts
 `calculate_c22deltapt`, `calculate_pidptcorrelations`, or
-`calculate_flowGfwOmegaXi`. For `calculate_c22deltapt`, an optional final
+`calculate_flowGfwOmegaXi`, `calculate_flowPbpbPikp`, or
+`calculate_ptspectra`. For `calculate_c22deltapt`, an optional final
 argument selects `usePure` (`-1`, `0`, or `1`). Each process reads a disjoint
 set of input file numbers; `hadd` merges their output after all succeed. The
 script prints the location of per-process ROOT files and logs. Direct macro

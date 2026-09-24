@@ -769,8 +769,11 @@
         "selection": {
             "eta_min": -0.8,
             "eta_max": 0.8,
+            "rapidity_min": -0.5,
+            "rapidity_max": 0.5,
             "strict_pt_bounds": true,
-            "strict_eta_bounds": true
+            "strict_eta_bounds": true,
+            "strict_rapidity_bounds": true
         },
         "axes": {
             "pt": {
@@ -834,6 +837,12 @@
                 "bins": 40,
                 "min": -1.0,
                 "max": 1.0
+            },
+            "rapidity": {
+                "binning": "uniform",
+                "bins": 1,
+                "min": -0.5,
+                "max": 0.5
             }
         }
     }
