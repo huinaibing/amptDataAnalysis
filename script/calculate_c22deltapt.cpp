@@ -121,7 +121,7 @@ namespace ampt_c22_delta_pt_macro
  */
 void calculate_c22deltapt(
     const char *inputConfigFile = "../config/cent_cfg.json",
-    const char *outputFile = "myAnalysisResultC22DeltaPt_pt04.root",
+    const char *outputFile = "myAnalysisResultC22DeltaPt.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1, int usePure = -1,
     const char *analysisConfigFile = "../config/config.json",
     int shardIndex = 0, int shardCount = 1)

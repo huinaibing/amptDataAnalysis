@@ -122,6 +122,9 @@ struct AnalysisConfig {
       {AxisBinning::Uniform, 90, 0., 90., {}},
       {AxisBinning::Uniform, 1000, 0., 3., {}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
+  bool v2PtRhoUseImpactParameterCentrality = true;
+  AxisConfig v2PtRhoNChargedAxis;
+  AxisConfig v2PtRhoQaNChargedAxis;
   V2PtRhoQaConfig v2PtRhoQa{
       {AxisBinning::Uniform, 90, 0., 90., {}},
       {AxisBinning::Variable,
@@ -446,6 +449,14 @@ inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
   const auto &v2PtRhoOutput = document.at("v2_pt_rho_output");
   config.v2PtRhoOutput =
       readOutputConfig(v2PtRhoOutput, "v2_pt_rho_output");
+  config.v2PtRhoUseImpactParameterCentrality =
+      v2PtRhoOutput.at("use_impact_parameter_centrality").get<bool>();
+  config.v2PtRhoNChargedAxis = readAxisConfig(
+      v2PtRhoOutput.at("axes").at("n_charged"),
+      "v2_pt_rho_output.axes.n_charged");
+  config.v2PtRhoQaNChargedAxis = readAxisConfig(
+      v2PtRhoOutput.at("qa_axes").at("n_charged"),
+      "v2_pt_rho_output.qa_axes.n_charged");
   config.v2PtRhoQa = readV2PtRhoQaConfig(
       v2PtRhoOutput, "v2_pt_rho_output.qa_axes");
   const auto &c22Output = document.at("c22_delta_pt_output");

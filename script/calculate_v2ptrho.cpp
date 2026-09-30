@@ -128,20 +128,28 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   const auto meanPtEdges = makeAxisEdges(config.v2PtRhoOutput.meanPtAxis);
   const auto bootstrapEdges =
       makeAxisEdges(config.v2PtRhoOutput.bootstrapAxis);
-  const auto centralityEdges =
-      makeAxisEdges(config.v2PtRhoOutput.centralityAxis);
+  const auto centralityEdges = makeAxisEdges(
+      config.v2PtRhoUseImpactParameterCentrality
+          ? config.v2PtRhoOutput.centralityAxis
+          : config.v2PtRhoNChargedAxis);
   const int nBootstrap = axisBinCount(config.v2PtRhoOutput.bootstrapAxis);
   const o2::framework::AxisSpec centralityAxis{centralityEdges,
-                                               "Centrality (%)"};
-  const auto qaCentralityEdges =
-      makeAxisEdges(config.v2PtRhoQa.centralityAxis);
+      config.v2PtRhoUseImpactParameterCentrality ? "Centrality (%)"
+                                                 : "N_{charged}"};
+  const auto qaCentralityEdges = makeAxisEdges(
+      config.v2PtRhoUseImpactParameterCentrality
+          ? config.v2PtRhoQa.centralityAxis
+          : config.v2PtRhoQaNChargedAxis);
   const auto qaPtEdges = makeAxisEdges(config.v2PtRhoQa.ptAxis);
   const auto qaPhiEdges = makeAxisEdges(config.v2PtRhoQa.phiAxis);
   const auto qaEtaEdges = makeAxisEdges(config.v2PtRhoQa.etaAxis);
 
   TH1D hCent("hCent",
-             "Event centrality distribution (AMPT impact parameter);"
-             "Centrality (%);Events",
+             config.v2PtRhoUseImpactParameterCentrality
+                 ? "Event centrality distribution (AMPT impact parameter);"
+                   "Centrality (%);Events"
+                 : "Charged-particle multiplicity distribution;"
+                   "N_{charged};Events",
              static_cast<int>(qaCentralityEdges.size()) - 1,
              qaCentralityEdges.data());
   TH1D hPt("hPt", "Track p_{T} distribution;p_{T} (GeV/#it{c});Tracks",
@@ -178,20 +186,24 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
         const EventSamples samples =
             fillGfwAndCollectSamples(gfw, event, config);
 
-        const double centrality =
-            centralityFromImpactParameter(event.imp, config);
-        hCent.Fill(centrality);
+        int nCharged = 0;
         for (const auto &track : event.particles)
         {
           if (!acceptsFlowTrack(track, config))
           {
             continue;
           }
+          ++nCharged;
           const double phi = track.GetPhi();
           hPhi.Fill(phi >= 0. ? phi : phi + TMath::TwoPi());
           hEta.Fill(track.GetEta());
           hPt.Fill(track.GetPt());
         }
+        const double centrality = config.v2PtRhoUseImpactParameterCentrality
+                                      ? centralityFromImpactParameter(event.imp,
+                                                                      config)
+                                      : static_cast<double>(nCharged);
+        hCent.Fill(centrality);
         const double randomValue = bootstrapRandomValue(config.randomSeed, identity);
         const double bootstrap =
             sampleAxisCoordinate(bootstrapEdges, randomValue);
