@@ -42,7 +42,8 @@ namespace ampt_v2_pt_rho_macro
         static_cast<TObjArray *>(chargedNames.Clone()));
     names->SetOwner(true);
     for (const char *name :
-         {"c22pure", "c32pure", "covV2PtPID", "c22TrackWeightPID", "c24pure"})
+         {"c22pure", "c22pureFull", "c32pure", "covV2PtPID",
+          "c22TrackWeightPID", "c24pure"})
     {
       names->Add(new TNamed(name, name));
     }
@@ -250,6 +251,12 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
               calculateCorrelation(gfw, manager, definition.pure);
           fillFlowProfile(*output.flow, "c22pure", centrality, pure,
                           randomValue);
+          // Keep the 0.8-gap POI-POI c22 for v2{2}, and also store the
+          // no-gap POI-POI c22 needed with c24pure for pure-POI v2{4}.
+          fillFlowProfile(
+              *output.flow, "c22pureFull", centrality,
+              calculateCorrelation(gfw, manager, definition.pureFull),
+              randomValue);
           fillFlowProfile(
               *output.flow, "c22Full", centrality,
               calculateCorrelation(gfw, manager, definition.fullTwoA),

@@ -497,12 +497,13 @@ struct SpeciesDefinition {
   int overlapMask;
   CorrType poiRefA;
   CorrType poiRefB;
-  CorrType pure;
+  CorrType pure; // 0.8-gap POI-POI c22 for v2{2}
   CorrType fullTwoA;
   CorrType fullTwoB;
   CorrType fourA;
   CorrType fourB;
-  CorrType pureFour;
+  CorrType pureFull; // no-gap POI-POI c22 for pure-POI v2{4}
+  CorrType pureFour; // no-gap 4POI c24
   const char *flowContainerName;
   const char *speciesName;
   const char *axisLabel;
@@ -513,19 +514,22 @@ inline const std::array<SpeciesDefinition, 3> &speciesDefinitions() {
       {{Species::Pion, PDG_t::kPiPlus, Mask::kPion, Mask::kPionOverlap,
         CorrType::Pion08Gap22a, CorrType::Pion08Gap22b, CorrType::PiPi08Gap22,
         CorrType::Pion0Gap22a_Full, CorrType::Pion0Gap22b_Full,
-        CorrType::Pion0Gap24a, CorrType::Pion0Gap24b, CorrType::PiPiFull24,
+        CorrType::Pion0Gap24a, CorrType::Pion0Gap24b, CorrType::PiPiFull22,
+        CorrType::PiPiFull24,
         "FlowContainerPi", "Pion",
         "#pi"},
        {Species::Kaon, PDG_t::kKPlus, Mask::kKaon, Mask::kKaonOverlap,
         CorrType::Kaon08Gap22a, CorrType::Kaon08Gap22b, CorrType::KaKa08Gap22,
         CorrType::Kaon0Gap22a_Full, CorrType::Kaon0Gap22b_Full,
-        CorrType::Kaon0Gap24a, CorrType::Kaon0Gap24b, CorrType::KaKaFull24,
+        CorrType::Kaon0Gap24a, CorrType::Kaon0Gap24b, CorrType::KaKaFull22,
+        CorrType::KaKaFull24,
         "FlowContainerKa", "Kaon",
         "K"},
        {Species::Proton, PDG_t::kProton, Mask::kProton, Mask::kProtonOverlap,
         CorrType::Prot08Gap22a, CorrType::Prot08Gap22b, CorrType::PrPr08Gap22,
         CorrType::Prot0Gap22a_Full, CorrType::Prot0Gap22b_Full,
-        CorrType::Prot0Gap24a, CorrType::Prot0Gap24b, CorrType::PrPrFull24,
+        CorrType::Prot0Gap24a, CorrType::Prot0Gap24b, CorrType::PrPrFull22,
+        CorrType::PrPrFull24,
         "FlowContainerPr",
         "Proton", "p"}}};
   return definitions;

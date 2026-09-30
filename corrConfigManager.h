@@ -25,7 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
-// ==================== 1. 定义枚举：彻底替代魔法数字 (共44个)
+// ==================== 1. 定义枚举：彻底替代魔法数字
 // ====================
 enum class CorrType {
   // --- Reference 流 (0-4) ---
@@ -83,10 +83,13 @@ enum class CorrType {
   Prot0Gap22a_Full,
   Prot0Gap22b_Full,
 
-  // --- 相同粒子四阶关联：全快度区，无 gap (41-43) ---
+  // --- 相同粒子关联：全快度区，无 gap ---
   PiPiFull24,
   KaKaFull24,
   PrPrFull24,
+  PiPiFull22,
+  KaKaFull22,
+  PrPrFull22,
 
   kTotal // 标记总数，不要删
 };
@@ -219,7 +222,7 @@ private:
   }
 
   void initConfigs() {
-    // 在这里集中定义所有 41 个配置！
+    // 在这里集中定义所有 correlation configurations。
     // 格式：{ 枚举类型, 配置字符串, 名字, 粒子类型, 阶数 }
     using P = CorrMeta::Particle;
     mMetas = {
@@ -248,7 +251,7 @@ private:
         {CorrType::Prot08Gap22b, "poiPrP08 {2} refN08 {-2}", "Prot08gap22b",
          P::kPr, 2},
 
-        // --- Full eta, 4th harmonic (11-16) ---
+        // --- No-gap POI-3ref c24: POI is N/P; all three refs use reffull ---
         {CorrType::Pion0Gap24a, "poiPiN reffull | olPiN {2 2 -2 -2}",
          "Pion0gap24a", P::kPi, 2},
         {CorrType::Pion0Gap24b, "poiPiP reffull | olPiP {2 2 -2 -2}",
@@ -304,7 +307,7 @@ private:
         {CorrType::PrPr08Gap32, "poiPrN08 {3} poiPrP08 {-3}", "PrPr08gap32",
          P::kPr, 3},
 
-        // --- Full eta, 2nd harmonic (35-40) ---
+        // --- No-gap POI-ref c22: POI is N/P; the ref may be either eta side ---
         {CorrType::Pion0Gap22a_Full, "poiPiN reffull | olPiN {2 -2}",
          "Pion0gap22a", P::kPi, 2},
         {CorrType::Pion0Gap22b_Full, "poiPiP reffull | olPiP {2 -2}",
@@ -318,12 +321,18 @@ private:
         {CorrType::Prot0Gap22b_Full, "poiPrP reffull | olPrP {2 -2}",
          "Prot0gap22b", P::kPr, 2},
 
-        // --- Same particle, full eta, 4th harmonic (41-43) ---
+        // --- Same-particle, full-eta, no-gap cumulants ---
         {CorrType::PiPiFull24, "poiPiFull {2 2 -2 -2}", "PiPiFull24", P::kPi,
          2},
         {CorrType::KaKaFull24, "poiKaFull {2 2 -2 -2}", "KaKaFull24", P::kKa,
          2},
         {CorrType::PrPrFull24, "poiPrFull {2 2 -2 -2}", "PrPrFull24", P::kPr,
+         2},
+        {CorrType::PiPiFull22, "poiPiFull {2 -2}", "PiPiFull22", P::kPi,
+         2},
+        {CorrType::KaKaFull22, "poiKaFull {2 -2}", "KaKaFull22", P::kKa,
+         2},
+        {CorrType::PrPrFull22, "poiPrFull {2 -2}", "PrPrFull22", P::kPr,
          2},
     };
 
