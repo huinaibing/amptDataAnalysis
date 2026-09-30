@@ -502,6 +502,7 @@ struct SpeciesDefinition {
   CorrType fullTwoB;
   CorrType fourA;
   CorrType fourB;
+  CorrType pureFour;
   const char *flowContainerName;
   const char *speciesName;
   const char *axisLabel;
@@ -512,17 +513,20 @@ inline const std::array<SpeciesDefinition, 3> &speciesDefinitions() {
       {{Species::Pion, PDG_t::kPiPlus, Mask::kPion, Mask::kPionOverlap,
         CorrType::Pion08Gap22a, CorrType::Pion08Gap22b, CorrType::PiPi08Gap22,
         CorrType::Pion0Gap22a_Full, CorrType::Pion0Gap22b_Full,
-        CorrType::Pion0Gap24a, CorrType::Pion0Gap24b, "FlowContainerPi", "Pion",
+        CorrType::Pion0Gap24a, CorrType::Pion0Gap24b, CorrType::PiPiFull24,
+        "FlowContainerPi", "Pion",
         "#pi"},
        {Species::Kaon, PDG_t::kKPlus, Mask::kKaon, Mask::kKaonOverlap,
         CorrType::Kaon08Gap22a, CorrType::Kaon08Gap22b, CorrType::KaKa08Gap22,
         CorrType::Kaon0Gap22a_Full, CorrType::Kaon0Gap22b_Full,
-        CorrType::Kaon0Gap24a, CorrType::Kaon0Gap24b, "FlowContainerKa", "Kaon",
+        CorrType::Kaon0Gap24a, CorrType::Kaon0Gap24b, CorrType::KaKaFull24,
+        "FlowContainerKa", "Kaon",
         "K"},
        {Species::Proton, PDG_t::kProton, Mask::kProton, Mask::kProtonOverlap,
         CorrType::Prot08Gap22a, CorrType::Prot08Gap22b, CorrType::PrPr08Gap22,
         CorrType::Prot0Gap22a_Full, CorrType::Prot0Gap22b_Full,
-        CorrType::Prot0Gap24a, CorrType::Prot0Gap24b, "FlowContainerPr",
+        CorrType::Prot0Gap24a, CorrType::Prot0Gap24b, CorrType::PrPrFull24,
+        "FlowContainerPr",
         "Proton", "p"}}};
   return definitions;
 }

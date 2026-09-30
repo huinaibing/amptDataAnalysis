@@ -42,7 +42,7 @@ namespace ampt_v2_pt_rho_macro
         static_cast<TObjArray *>(chargedNames.Clone()));
     names->SetOwner(true);
     for (const char *name :
-         {"c22pure", "c32pure", "covV2PtPID", "c22TrackWeightPID"})
+         {"c22pure", "c32pure", "covV2PtPID", "c22TrackWeightPID", "c24pure"})
     {
       names->Add(new TNamed(name, name));
     }
@@ -263,6 +263,10 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
                           randomValue);
           fillFlowProfile(*output.flow, "c24", centrality,
                           calculateCorrelation(gfw, manager, definition.fourB),
+                          randomValue);
+          fillFlowProfile(*output.flow, "c24pure", centrality,
+                          calculateCorrelation(gfw, manager,
+                                               definition.pureFour),
                           randomValue);
 
           fillFlowMeanPtProduct(*output.flow, "covV2Pt", centrality, pure,

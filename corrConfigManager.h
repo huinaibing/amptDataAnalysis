@@ -25,7 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
-// ==================== 1. 定义枚举：彻底替代魔法数字 (共41个)
+// ==================== 1. 定义枚举：彻底替代魔法数字 (共44个)
 // ====================
 enum class CorrType {
   // --- Reference 流 (0-4) ---
@@ -82,6 +82,11 @@ enum class CorrType {
   Kaon0Gap22b_Full,
   Prot0Gap22a_Full,
   Prot0Gap22b_Full,
+
+  // --- 相同粒子四阶关联：全快度区，无 gap (41-43) ---
+  PiPiFull24,
+  KaKaFull24,
+  PrPrFull24,
 
   kTotal // 标记总数，不要删
 };
@@ -184,6 +189,7 @@ private:
     mGfw.AddRegion("poiPiP08", etaGap, etaMax, 1, Mask::kPion);
     mGfw.AddRegion("poiPiN", -etaMax, 0, 1, Mask::kPion);
     mGfw.AddRegion("poiPiP", 0, etaMax, 1, Mask::kPion);
+    mGfw.AddRegion("poiPiFull", -etaMax, etaMax, 1, Mask::kPion);
 
     // --- Overlap Pions ---
     mGfw.AddRegion("olPiN", -etaMax, 0, 1, Mask::kPionOverlap);
@@ -194,6 +200,7 @@ private:
     mGfw.AddRegion("poiKaP08", etaGap, etaMax, 1, Mask::kKaon);
     mGfw.AddRegion("poiKaN", -etaMax, 0, 1, Mask::kKaon);
     mGfw.AddRegion("poiKaP", 0, etaMax, 1, Mask::kKaon);
+    mGfw.AddRegion("poiKaFull", -etaMax, etaMax, 1, Mask::kKaon);
 
     // --- Overlap Kaons ---
     mGfw.AddRegion("olKaN", -etaMax, 0, 1, Mask::kKaonOverlap);
@@ -204,6 +211,7 @@ private:
     mGfw.AddRegion("poiPrP08", etaGap, etaMax, 1, Mask::kProton);
     mGfw.AddRegion("poiPrN", -etaMax, 0, 1, Mask::kProton);
     mGfw.AddRegion("poiPrP", 0, etaMax, 1, Mask::kProton);
+    mGfw.AddRegion("poiPrFull", -etaMax, etaMax, 1, Mask::kProton);
 
     // --- Overlap Protons ---
     mGfw.AddRegion("olPrN", -etaMax, 0, 1, Mask::kProtonOverlap);
@@ -309,6 +317,14 @@ private:
          "Prot0gap22a", P::kPr, 2},
         {CorrType::Prot0Gap22b_Full, "poiPrP reffull | olPrP {2 -2}",
          "Prot0gap22b", P::kPr, 2},
+
+        // --- Same particle, full eta, 4th harmonic (41-43) ---
+        {CorrType::PiPiFull24, "poiPiFull {2 2 -2 -2}", "PiPiFull24", P::kPi,
+         2},
+        {CorrType::KaKaFull24, "poiKaFull {2 2 -2 -2}", "KaKaFull24", P::kKa,
+         2},
+        {CorrType::PrPrFull24, "poiPrFull {2 2 -2 -2}", "PrPrFull24", P::kPr,
+         2},
     };
 
     // 自动生成 corrconfigs 和 name map
