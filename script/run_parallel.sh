@@ -3,13 +3,14 @@ set -euo pipefail
 
 usage() {
     echo "Usage: $0 <macro> <workers> [input-json] [output-root] [max-files] [max-configs] [analysis-json] [use-pure-for-c22]" >&2
-    echo "Macros: calculate_v2ptrho, calculate_c22deltapt, calculate_pidptcorrelations, calculate_flowGfwOmegaXi, calculate_flowPbpbPikp, calculate_ptspectra" >&2
+    echo "Macros: calculate_v2ptrho, calculate_c22deltapt, calculate_pidptcorrelations, calculate_flowGfwOmegaXi, calculate_flowPbpbPikp, calculate_ptspectra, calculate_pid_v2_rp_gap_variance" >&2
     exit 2
 }
 
 (( $# >= 2 && $# <= 8 )) || usage
 macro=$1
 workers=$2
+default_input=../config/cent_cfg.json
 case "$macro" in
     calculate_v2ptrho) default_output=myAnalysisResultV2PtRho.root ;;
     calculate_c22deltapt) default_output=myAnalysisResultC22DeltaPt_pt04.root ;;
@@ -17,11 +18,12 @@ case "$macro" in
     calculate_flowGfwOmegaXi) default_output=myAnalysisResultFlowGfwOmegaXi.root ;;
     calculate_flowPbpbPikp) default_output=myAnalysisResultFlowPbpbPikp.root ;;
     calculate_ptspectra) default_output=myAnalysisResultPtSpectra.root ;;
+    calculate_pid_v2_rp_gap_variance) default_output=pid_v2_rp_gap_moments.root; default_input=../config/cent_cfg_ampt.json ;;
     *) usage ;;
 esac
 [[ $workers =~ ^[1-9][0-9]*$ ]] || usage
 
-input=${3:-../config/cent_cfg.json}
+input=${3:-$default_input}
 output=${4:-$default_output}
 max_files=${5:--1}
 max_configs=${6:--1}

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -47,6 +48,15 @@ struct PidPtCorrelationsOutputConfig {
   bool strictEtaBounds = true;
   AxisConfig centralityAxis;
   AxisConfig bootstrapAxis;
+};
+
+struct PidV2RPGapVarianceOutputConfig {
+  bool strictPtBounds = true;
+  bool strictEtaBounds = true;
+  double innerAbsEta = 0.4;
+  double etaMax = 0.8;
+  AxisConfig centralityAxis{AxisBinning::Uniform, 90, 0., 90., {}};
+  AxisConfig bootstrapAxis{AxisBinning::Uniform, 30, 0., 30., {}};
 };
 
 struct V2PtRhoQaConfig {
@@ -160,6 +170,7 @@ struct AnalysisConfig {
         16., 18., 20., 25., 30., 35., 40., 45., 50., 55., 60., 65., 70.,
         80., 90.}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
+  PidV2RPGapVarianceOutputConfig pidV2RPGapVarianceOutput;
   FlowPbpbPikpOutputConfig flowPbpbPikpOutput;
   PtSpectraOutputConfig ptSpectraOutput{
       -0.8,
@@ -301,6 +312,30 @@ readPidPtCorrelationsOutputConfig(const nlohmann::json &document,
           document.at("strict_eta_bounds").get<bool>(),
           readAxisConfig(axes.at("centrality"), name + ".centrality"),
           readAxisConfig(axes.at("bootstrap"), name + ".bootstrap")};
+}
+
+inline PidV2RPGapVarianceOutputConfig
+readPidV2RPGapVarianceOutputConfig(const nlohmann::json &document,
+                                    const std::string &name) {
+  const auto &selection = document.at("selection");
+  const auto &axes = document.at("axes");
+  PidV2RPGapVarianceOutputConfig result;
+  result.strictPtBounds = selection.at("strict_pt_bounds").get<bool>();
+  result.strictEtaBounds = selection.at("strict_eta_bounds").get<bool>();
+  result.innerAbsEta = selection.at("inner_abs_eta").get<double>();
+  result.etaMax = selection.at("eta_max").get<double>();
+  if (!(result.innerAbsEta >= 0. && result.etaMax > result.innerAbsEta) ||
+      !std::isfinite(result.innerAbsEta) || !std::isfinite(result.etaMax)) {
+    throw std::runtime_error(name + ": require 0 <= inner_abs_eta < eta_max");
+  }
+  result.centralityAxis = readAxisConfig(axes.at("centrality"),
+                                         name + ".axes.centrality");
+  result.bootstrapAxis = readAxisConfig(axes.at("bootstrap"),
+                                        name + ".axes.bootstrap");
+  if (axisBinCount(result.bootstrapAxis) < 2) {
+    throw std::runtime_error(name + ": bootstrap axis needs at least 2 bins");
+  }
+  return result;
 }
 
 inline PtSpectraOutputConfig
@@ -466,6 +501,9 @@ inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
   config.pidPtCorrelationsOutput = readPidPtCorrelationsOutputConfig(
       document.at("pid_pt_correlations_output"),
       "pid_pt_correlations_output");
+  config.pidV2RPGapVarianceOutput = readPidV2RPGapVarianceOutputConfig(
+      document.at("pid_v2_rp_gap_variance_output"),
+      "pid_v2_rp_gap_variance_output");
   config.flowPbpbPikpOutput = readFlowPbpbPikpOutputConfig(
       document.at("flowPbpbPikp_output"), "flowPbpbPikp_output");
 
