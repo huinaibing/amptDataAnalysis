@@ -17,11 +17,21 @@
     {
         "path": "/home/huinaibing/hydro_result/hydro_20443922_",
         "bin_val": 0,
-        "n_files": 81
+        "n_files": 1000
     },
     {
         "path": "/home/huinaibing/hydro_result/hydro_20457598_",
         "bin_val": 0,
         "n_files": 1000
+    },
+    {
+        "path": "/home/huinaibing/hydro_result/hydro_20614659_",
+        "bin_val": 0,
+        "n_files": 1000
+    },
+    {
+        "path": "/home/huinaibing/hydro_result/hydro_20614679_",
+        "bin_val": 0,
+        "n_files": 991
     }
 ]
