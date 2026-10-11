@@ -120,30 +120,44 @@ must expose the same `particles` tree and branches expected by `dataLoader.h`.
 
 `ROOT_SETUP` selects a fixed ordinary ROOT environment available to the
 workers; the default is the CERN CVMFS LCG_108 EL9/gcc13 view (ROOT 6.36.02).
-`run.sub` selects EL9/x86_64 workers and uses `JobFlavour = "espresso"`
-(20 minutes), with no explicit CPU or memory request. Both analysis and
+`run.sub` selects EL9/x86_64 workers and uses `JobFlavour = "longlunch"`
+(2 hours), with no explicit CPU or memory request. Both analysis and
 merge use this submit description. Increase `SHARD_COUNT` if an analysis
-shard exceeds the short queue's time limit. The merge must also finish
+shard exceeds the queue's time limit. The merge must also finish
 within that limit; otherwise change the flavour before resubmitting.
 
 The submit script packages code, bundled dependencies, and both JSONs.
 Each `condor_worker.sh` job unpacks this snapshot into worker scratch and
 runs one ROOT process with an explicit shard index. All shards must
-succeed, including successful EOS output transfer, before DAGMan starts
+succeed, including successful EOS output upload, before DAGMan starts
 the separate `merge_results.cpp` job. Each run has its own EOS directory
 containing `part_0.root`, ..., and `OUTPUT_NAME`. Failed jobs do not upload
-partial files; missing inputs, ROOT errors, input-count mismatches, and
-invalid output files cause a nonzero exit. DAGMan retries failed nodes up
-to `RETRIES` times. Transfer failures may put a job on hold and need to be
-investigated through `condor_q -hold`.
+partial analysis results. Nonexistent raw input files are skipped; the
+input-count check includes both loaded and skipped files. Other ROOT
+errors, input-count mismatches, invalid output files, and EOS upload
+failures cause a nonzero exit. DAGMan retries failed nodes up to `RETRIES`
+times. After validation, the worker creates the EOS run directory with
+`xrdfs mkdir -p` and uploads the ROOT file with `xrdcp --force`, so DAGMan
+only considers the node successful after the upload completes.
 
 Keep `SUBMIT_DIR` on AFS (the default is `script/condor_runs/` when the
 repository is in AFS), and have a valid Kerberos ticket before submission.
 The CERN batch service supplies worker credentials; the submit file does
 not inherit the login shell environment. Submit files, DAG state, stdout,
-stderr, and scheduling logs remain under `SUBMIT_DIR`; original data and
-ROOT results reside on EOS. `MAX_JOBS` limits queued/running DAG nodes,
+stderr, and scheduling logs remain under `SUBMIT_DIR`. `ON_EXIT` returns
+stdout/stderr even when the worker fails, while `transfer_output_files =
+""` prevents Condor from requiring a ROOT file for a failed job. CERN does
+not permit `stream_output` or `stream_error`. Original data and ROOT results
+reside on EOS. `MAX_JOBS` limits queued/running DAG nodes,
 independently of the total `SHARD_COUNT`.
+
+Existing run directories contain their own copied submit file, worker,
+and code archive; repository changes do not update them. To recover a
+failed DAG, copy the updated `run.sub` and `condor_worker.sh` into that run
+directory, then run `condor_submit_dag -dorescuefrom 1 analysis.dag` for
+`analysis.dag.rescue001`. This keeps completed nodes, reruns failed shards,
+then submits `MERGE`. Do not use `-force` or rerun `submit_condor.sh` for
+this recovery, as that would start the completed shards again.
 
 For a remote pilot, first set `SHARD_COUNT=1`, `MAX_FILES=1`, and
 `MAX_CONFIGS=1`. Verify EOS reads, output transfer, and the automatic merge

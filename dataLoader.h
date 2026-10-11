@@ -74,7 +74,7 @@ public:
       if (mChain->Add(fileName, 0) > 0) {
         ++addedFiles;
         mFileNumbers.push_back(i);
-        std::cout << "Added input file: " << fileName << '\n';
+        std::cout << "Added input file: " << fileName << std::endl;
       } else {
         std::cerr << "Skipped missing input file: " << fileName << '\n';
       }

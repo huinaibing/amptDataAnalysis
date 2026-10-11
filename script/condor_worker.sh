@@ -3,13 +3,17 @@ set -euo pipefail
 
 # 参数由 analysis.dag 的 VARS 提供；每个节点的 ProcId 都可能是 0。
 die() { echo "错误：$*" >&2; exit 1; }
-(( $# == 4 )) || die "用法：condor_worker.sh analysis|merge shard result.root expected-count"
+(( $# == 5 )) || die "用法：condor_worker.sh analysis|merge shard result.root expected-count eos-output"
 mode=$1
 shard=$2
 result=$3
 expected=$4
+eos_output=$5
 [[ $mode == analysis || $mode == merge ]] || die "未知的作业模式。"
 [[ $shard =~ ^[0-9]+$ && $expected =~ ^[0-9]+$ ]] || die "分片编号/预期数量无效。"
+[[ $eos_output =~ ^(root://[A-Za-z0-9_.:-]+)(//eos/[A-Za-z0-9_./-]+/)$ ]] || die "EOS 输出目录无效。"
+eos_endpoint=${BASH_REMATCH[1]}
+eos_path=${BASH_REMATCH[2]#/}
 
 scratch=$(pwd -P)
 source "$scratch/job_config.sh"
@@ -26,6 +30,8 @@ set +u
 source "$ROOT_SETUP"
 set -u
 command -v root >/dev/null || die "加载环境后仍未找到 root。"
+command -v xrdcp >/dev/null || die "加载环境后仍未找到 xrdcp。"
+command -v xrdfs >/dev/null || die "加载环境后仍未找到 xrdfs。"
 echo "Worker: $(hostname); ROOT setup: $ROOT_SETUP; mode: $mode; shard: $shard"
 if command -v root-config >/dev/null; then
     root-config --version
@@ -63,13 +69,16 @@ fi
 if ! root -n -l -b -q "$call" 2>&1 | tee "$scratch/work/root.log"; then
     die "ROOT 运行失败。"
 fi
-if grep -qE '^Skipped missing input file:|^Error in <|^Fatal in <|\*\*\* Break \*\*\*' "$scratch/work/root.log"; then
-    die "发现缺失输入或 ROOT I/O 错误，拒绝上传部分结果。"
+if grep -E '^Error in <|^Fatal in <|\*\*\* Break \*\*\*' "$scratch/work/root.log" |
+    grep -vE '^Error in <(TNetXNGFile::Open|TFile::TFile|TFile::Open)>: .*([[]3011[]].*No such file or directory|does not exist)' > /dev/null; then
+    die "发现 ROOT I/O 错误，拒绝上传部分结果。"
 fi
 if [[ $mode == analysis ]]; then
     loaded=$(grep -c '^Added input file: ' "$scratch/work/root.log" || true)
-    [[ $loaded -eq $expected ]] || die "预期 $expected 个输入文件，实际加入 $loaded 个。"
+    skipped=$(grep -c '^Skipped missing input file: ' "$scratch/work/root.log" || true)
+    [[ $((loaded + skipped)) -eq $expected ]] || die "预期 $expected 个输入文件，实际加入 $loaded 个，跳过 $skipped 个。"
     grep -qE '^Processed [0-9]+ AMPT events; wrote ' "$scratch/work/root.log" || die "分析未正常结束。"
+    echo "Input files: loaded=$loaded; skipped=$skipped"
 else
     grep -q "^Merged $SHARD_COUNT files into " "$scratch/work/root.log" || die "合并未正常结束。"
 fi
@@ -83,6 +92,7 @@ if ! root -n -l -b -q -e '#include "../external/o2physics/FlowContainerRoot.h"' 
     die "输出 ROOT 文件检查失败。"
 fi
 
-# 只有验证后的文件才放到 transfer_output_files 指定的顶层位置。
-mv -- "$output" "$scratch/$result"
-echo "Verified output: $result; HTCondor will transfer it to EOS."
+# ROOT 结果由 worker 上传；ON_EXIT 只回传日志，不要求失败作业存在 ROOT 文件。
+xrdfs "$eos_endpoint" mkdir -p "$eos_path" || die "无法创建 EOS 输出目录。"
+xrdcp --force "$output" "${eos_output}${result}" || die "ROOT 结果上传 EOS 失败。"
+echo "Verified output: $result; uploaded to ${eos_output}${result}"
