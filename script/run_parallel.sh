@@ -2,12 +2,12 @@
 set -euo pipefail
 
 usage() {
-    echo "Usage: $0 <macro> <workers> [input-json] [output-root] [max-files] [max-configs] [analysis-json] [use-pure-for-c22]" >&2
+    echo "Usage: $0 <macro> <workers> [input-json] [output-root] [max-files] [max-configs] [analysis-json]" >&2
     echo "Macros: calculate_v2ptrho, calculate_c22deltapt, calculate_pidptcorrelations, calculate_flowGfwOmegaXi, calculate_flowPbpbPikp, calculate_ptspectra, calculate_pid_v2_rp_gap_variance" >&2
     exit 2
 }
 
-(( $# >= 2 && $# <= 8 )) || usage
+(( $# >= 2 && $# <= 7 )) || usage
 macro=$1
 workers=$2
 default_input=../config/cent_cfg.json
@@ -28,9 +28,7 @@ output=${4:-$default_output}
 max_files=${5:--1}
 max_configs=${6:--1}
 analysis=${7:-../config/config.json}
-use_pure=${8:--1}
-[[ $max_files =~ ^-?[0-9]+$ && $max_configs =~ ^-?[0-9]+$ && $use_pure =~ ^-?[0-9]+$ ]] || usage
-[[ $macro == calculate_c22deltapt || $# -lt 8 ]] || usage
+[[ $max_files =~ ^-?[0-9]+$ && $max_configs =~ ^-?[0-9]+$ ]] || usage
 command -v root >/dev/null || { echo "ROOT is not available; load ROOT first" >&2; exit 1; }
 
 cd "$(dirname "$0")"
@@ -52,8 +50,9 @@ for (( shard = 0; shard < workers; ++shard )); do
     part_arg=$(root_quote "$part")
     parts+=("$part")
     if [[ $macro == calculate_c22deltapt ]]; then
-        call=$(printf '%s.cpp("%s","%s",%s,%s,%s,"%s",%d,%d)' \
-            "$macro" "$input" "$part_arg" "$max_files" "$max_configs" "$use_pure" "$analysis" "$shard" "$workers")
+        # -1 让入口从分析 JSON 的 c22_delta_pt_output.use_pure 读取模式。
+        call=$(printf '%s.cpp("%s","%s",%s,%s,-1,"%s",%d,%d)' \
+            "$macro" "$input" "$part_arg" "$max_files" "$max_configs" "$analysis" "$shard" "$workers")
     else
         call=$(printf '%s.cpp("%s","%s",%s,%s,"%s",%d,%d)' \
             "$macro" "$input" "$part_arg" "$max_files" "$max_configs" "$analysis" "$shard" "$workers")

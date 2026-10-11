@@ -46,8 +46,9 @@ root_quote() {
 output_arg=$(root_quote "$output")
 if [[ $mode == analysis ]]; then
     if [[ $MACRO == calculate_c22deltapt ]]; then
-        call=$(printf '%s.cpp("../config/input.json","%s",%s,%s,%s,"../config/analysis.json",%s,%s)' \
-            "$MACRO" "$output_arg" "$MAX_FILES" "$MAX_CONFIGS" "$USE_PURE" "$shard" "$SHARD_COUNT")
+        # -1 让入口从分析 JSON 的 c22_delta_pt_output.use_pure 读取模式。
+        call=$(printf '%s.cpp("../config/input.json","%s",%s,%s,-1,"../config/analysis.json",%s,%s)' \
+            "$MACRO" "$output_arg" "$MAX_FILES" "$MAX_CONFIGS" "$shard" "$SHARD_COUNT")
     else
         call=$(printf '%s.cpp("../config/input.json","%s",%s,%s,"../config/analysis.json",%s,%s)' \
             "$MACRO" "$output_arg" "$MAX_FILES" "$MAX_CONFIGS" "$shard" "$SHARD_COUNT")

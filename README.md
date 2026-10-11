@@ -50,8 +50,10 @@ from `script/`:
 The second argument is the number of processes. The same command accepts
 `calculate_c22deltapt`, `calculate_pidptcorrelations`, or
 `calculate_flowGfwOmegaXi`, `calculate_flowPbpbPikp`, or
-`calculate_ptspectra`. For `calculate_c22deltapt`, an optional final
-argument selects `usePure` (`-1`, `0`, or `1`). Each process reads a disjoint
+`calculate_ptspectra`. For `calculate_c22deltapt`, the mode is read from
+`c22_delta_pt_output.use_pure` in the analysis JSON: `false` selects PID
+POI-ref and `true` selects PID POI-POI Pure. The shell does not accept a
+separate mode argument. Each process reads a disjoint
 set of input file numbers; `merge_results.cpp` loads the bundled
 `FlowContainer` and merges their output after all succeed. The
 script prints the location of per-process ROOT files and logs. Direct macro
@@ -91,6 +93,8 @@ converts `/eos/` input prefixes to `root://eosuser.cern.ch//eos/...` in the
 packaged copy. It preserves every JSON entry and its original order, so
 file sharding and deterministic bootstrap identities match `run_parallel.sh`.
 The repository's original JSON and analysis macros are unchanged.
+For `calculate_c22deltapt`, set `c22_delta_pt_output.use_pure` in
+`ANALYSIS_JSON`; the Condor shells do not define or override this mode.
 
 `ROOT_SETUP` selects a fixed ordinary ROOT environment available to the
 workers; the default is the CERN CVMFS LCG_108 EL9/gcc13 view (ROOT 6.36.02).

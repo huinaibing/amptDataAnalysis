@@ -16,7 +16,6 @@ SHARD_COUNT=28
 MAX_JOBS=10                 # DAG 中同时排队/运行的节点上限
 MAX_FILES=-1               # 每个原始 JSON entry 的文件上限；-1 表示全部
 MAX_CONFIGS=-1             # 原始 JSON entry 数量上限；-1 表示全部
-USE_PURE=-1                # 仅 calculate_c22deltapt 使用
 RETRIES=2                  # 每个节点失败后最多重试两次
 SUBMIT_DIR="$SCRIPT_DIR/condor_runs"  # CERN 上应位于 AFS，不要放在 EOS
 SUBMIT=true                # false：只生成文件；true：生成后提交 DAG
@@ -27,7 +26,7 @@ die() { echo "错误：$*" >&2; exit 1; }
 command -v python3 >/dev/null || die "未找到 python3。"
 [[ $SHARD_COUNT =~ ^[1-9][0-9]*$ && $MAX_JOBS =~ ^[1-9][0-9]*$ ]] || die "SHARD_COUNT/MAX_JOBS 必须是正整数。"
 [[ $MAX_FILES =~ ^(-1|0|[1-9][0-9]*)$ && $MAX_CONFIGS =~ ^(-1|0|[1-9][0-9]*)$ ]] || die "数量上限必须为 -1 或非负整数。"
-[[ $RETRIES =~ ^[0-9]+$ && $USE_PURE =~ ^(-1|0|1)$ ]] || die "RETRIES/USE_PURE 无效。"
+[[ $RETRIES =~ ^[0-9]+$ ]] || die "RETRIES 必须为非负整数。"
 [[ $SUBMIT == true || $SUBMIT == false ]] || die "SUBMIT 必须为 true 或 false。"
 [[ -f $INPUT_JSON && -f $ANALYSIS_JSON ]] || die "找不到输入/分析 JSON；请先生成 EOS 输入清单。"
 
@@ -42,7 +41,7 @@ run_dir=$(mktemp -d "$SUBMIT_DIR/run_$(date +%Y%m%d_%H%M%S)_XXXXXX")
 # 打包源码和两份配置，不传输原始 ROOT 数据，也不在提交节点跑分析。
 python3 - "$REPO_DIR" "$run_dir" "$MACRO" "$INPUT_JSON" "$ANALYSIS_JSON" \
     "$OUTPUT_NAME" "$EOS_INPUT_ENDPOINT" "$EOS_OUTPUT_DIR" "$ROOT_SETUP" \
-    "$SHARD_COUNT" "$MAX_FILES" "$MAX_CONFIGS" "$USE_PURE" "$RETRIES" <<'PY'
+    "$SHARD_COUNT" "$MAX_FILES" "$MAX_CONFIGS" "$RETRIES" <<'PY'
 import io
 import json
 import math
@@ -54,7 +53,7 @@ import sys
 import tarfile
 
 (repo, run, macro, input_json, analysis_json, output_name, endpoint,
- eos_dir, root_setup, shards, max_files, max_configs, use_pure, retries) = sys.argv[1:]
+ eos_dir, root_setup, shards, max_files, max_configs, retries) = sys.argv[1:]
 repo, run = Path(repo).resolve(), Path(run).resolve()
 shards, max_files, max_configs = map(int, (shards, max_files, max_configs))
 task_dirs = {
@@ -123,7 +122,7 @@ with tarfile.open(run / "analysis.tar.gz", "w:gz") as archive:
 settings = {
     "MACRO": macro, "TASK_DIR": task_dirs[macro], "OUTPUT_NAME": output_name,
     "ROOT_SETUP": root_setup, "SHARD_COUNT": str(shards),
-    "MAX_FILES": str(max_files), "MAX_CONFIGS": str(max_configs), "USE_PURE": use_pure,
+    "MAX_FILES": str(max_files), "MAX_CONFIGS": str(max_configs),
 }
 (run / "job_config.sh").write_text("".join(key + "=" + shlex.quote(value) + "\n"
                                            for key, value in settings.items()))
