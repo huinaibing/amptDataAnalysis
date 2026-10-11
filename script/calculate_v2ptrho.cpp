@@ -2,9 +2,9 @@
 #include "../analysisUtils.h"
 #include "../utils.h"
 
-#include "Framework/HistogramSpec.h"
-#include "PWGCF/GenericFramework/Core/FlowContainer.h"
-#include "PWGCF/GenericFramework/Core/GFW.h"
+#include "../external/o2physics/AxisSpec.h"
+#include "../external/o2physics/FlowContainerRoot.h"
+#include "../external/o2physics/GFWRoot.h"
 #include "TFile.h"
 #include "TH1D.h"
 #include "TObjArray.h"

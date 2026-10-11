@@ -3,7 +3,7 @@
 
 #include "analysisUtils.h"
 
-#include "PWGCF/GenericFramework/Core/FlowContainer.h"
+#include "external/o2physics/FlowContainerRoot.h"
 #include "TProfile3D.h"
 
 inline constexpr int kCompatibilityBootstrapSubsamples = 30;

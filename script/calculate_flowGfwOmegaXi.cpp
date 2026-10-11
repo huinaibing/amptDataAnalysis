@@ -1,7 +1,7 @@
 #include "../analysisConfig.h"
 #include "../analysisUtils.h"
 
-#include "PWGCF/GenericFramework/Core/GFW.h"
+#include "../external/o2physics/GFWRoot.h"
 
 #include "TFile.h"
 #include "TDirectory.h"

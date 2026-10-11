@@ -1,8 +1,8 @@
 #include "../analysisConfig.h"
 #include "../analysisUtils.h"
 
-#include "Framework/HistogramSpec.h"
-#include "PWGCF/GenericFramework/Core/FlowContainer.h"
+#include "../external/o2physics/AxisSpec.h"
+#include "../external/o2physics/FlowContainerRoot.h"
 #include "TFile.h"
 #include "TH1D.h"
 #include "TObjArray.h"

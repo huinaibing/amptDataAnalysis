@@ -109,7 +109,7 @@ struct Profiles {
  * PID particle.
  * No variance (or its uncertainty) is constructed in this upstream macro.
  *
- * Run directly in the O2Physics environment from script/, or use
+ * Run directly in a ROOT environment from script/, or use
  * run_parallel.sh calculate_pid_v2_rp_gap_variance <workers> ...
  */
 void calculate_pid_v2_rp_gap_variance(

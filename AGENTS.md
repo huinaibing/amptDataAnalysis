@@ -61,7 +61,7 @@ AMPT truth 数据没有 reconstructed `sel8`、detector PID、track-quality、NU
 - 四个函数的共同参数依次是 input-file JSON 路径、输出 ROOT 路径、每个 JSON entry 最多读取的文件数、最多读取的 JSON entry 数、分析配置 JSON 路径；两个数量参数为 `-1` 时表示全部处理。`calculate_c22deltapt(...)` 在分析配置路径之前额外有一个 `usePure` 参数，`calculate_flowGfwOmegaXi(...)` 与 pidFlowPtCorr 三个入口的参数顺序一致。
 - `config/cent_cfg.json` 列出 AMPT 输入路径前缀和文件数量；`config/config.json` 管理 flow eta subevent、独立的 mean-pT eta 范围、各粒子 pT 范围、impact-parameter 中心度转换、随机种子、Pure/POI-ref 模式以及各入口的输出轴。
 - `v2_pt_rho_output`、`c22_delta_pt_output` 和 `pid_pt_correlations_output` 分别控制三个 pidFlowPtCorr 对应入口的边界策略和输出 axes。其中 `v2_pt_rho_output.axes` 控制 FlowContainer/profile 的分析轴，`v2_pt_rho_output.qa_axes.{centrality,pt,phi,eta}` 单独控制 `hCent/hPt/hPhi/hEta` QA 轴；新增或修改 v2-pT-rho QA 图时必须沿用它，并继续使用现有 uniform/variable `AxisConfig` 格式。`calculate_flowGfwOmegaXi.cpp` 的输出轴按 O2 `flowGfwOmegaXi` 默认值硬编码（charged pT 38 bins、V0/级联 pT 14 bins、中心度 10 bins、mass bins 等），以保持与 O2 输出结构完全一致；修改 O2 默认 binning 时必须同步修改该脚本。修改 binning 时要保证其 O2 对应输出及 downstream 脚本仍兼容。
-- 入口宏应从 `script/` 目录在 O2Physics 环境中由 ROOT 直接运行，不要编译。
+- 本分支将所需 O2Physics 类保存在 `external/o2physics/`。入口宏应从 `script/` 目录在普通 ROOT 6（支持 C++17）环境中直接运行，不要编译，也不要同时加载 O2Physics 中的同名类。
 
 ```bash
 cd /home/huinaibing/git_repo/amptDataAnalysis/script
@@ -71,11 +71,12 @@ root -l -b -q 'calculate_pidptcorrelations.cpp("../config/cent_cfg.json", "/tmp/
 root -l -b -q 'calculate_flowGfwOmegaXi.cpp("../config/cent_cfg.json", "/tmp/flowGfwOmegaXi.root", 1, 1, "../config/config.json")'
 ```
 
-Codex 运行这些命令时，每条命令都必须在同一 shell 中加载 O2 环境，且 `--work-dir` 指向 `sw`：
+Codex 运行这些命令时，在同一 shell 中加载普通 ROOT 环境，无需 `alienv`。例如本机可使用：
 
 ```bash
-alienv --work-dir /home/huinaibing/o2_workdir/sw \
-  setenv O2Physics/latest -c bash -lc 'cd /home/huinaibing/git_repo/amptDataAnalysis/script && root -l -b -q macro.cpp'
+source /home/huinaibing/root/root/bin/thisroot.sh
+cd /home/huinaibing/git_repo/amptDataAnalysis/script
+root -l -b -q macro.cpp
 ```
 
 不要编译 ROOT 代码；优先直接运行 ROOT 宏、脚本或命令，只有用户明确要求时才编译。
@@ -84,14 +85,14 @@ alienv --work-dir /home/huinaibing/o2_workdir/sw \
 
 在 `script/` 下新增独立 ROOT 入口时，按以下方式写，尽量复用现有公共逻辑：
 
-- 主函数放 `script/*.cpp`，入口宏由 ROOT 直接运行，不要编译；运行环境与上面一致：`alienv --work-dir /home/huinaibing/o2_workdir/sw setenv O2Physics/latest -c bash -lc 'cd /home/huinaibing/git_repo/amptDataAnalysis/script && root -l -b -q macro.cpp'`。
+- 主函数放 `script/*.cpp`，入口宏由普通 ROOT 直接运行，不要编译；运行环境与上面一致。GFW 和 FlowContainer 使用仓库内 `external/o2physics/GFWRoot.h` 和 `FlowContainerRoot.h`，并行合并使用 `script/merge_results.cpp`，以加载类并注册 FlowContainer 的合并方法。
 - 事件和粒子读取使用 `analysisUtils.h` 的 `forEachConfiguredEvent(...)` 遍历 `Event`，再遍历 `event.particles` 里的 `Track`；粒子量用 `GetPt()/GetEta()/GetPhi()` 和 `pdgPid` 获取，不要直接访问 ROOT branch。
 - 粒子种类用 `isChargedPdg`、`findSpecies`、`ptRangeForPdg` 和 `SpeciesDefinition` 判断；中心度用 `centralityFromImpactParameter(event.imp, config)`，不要写死转换公式。
 - 公共逻辑留在 `analysisConfig.h`/`analysisUtils.h`/`utils.h` 等头文件中，`script/` 入口只负责本 workflow 的编排和输出。
 - 新增选择 cut 和输出轴时，在 `config/config.json` 下加一个 `xxx_output` 段（包含 `selection` 和 `axes`），沿用现有 uniform/variable `AxisConfig` 格式；同时在 `analysisConfig.h` 中增加对应 struct、默认值和 `readXxxOutputConfig(...)`，并在 `loadAnalysisConfig` 中解析。脚本用 `makeAxisEdges` 取轴，不要在脚本里写死 binning。
 - 函数参数沿用统一顺序：`inputConfigFile, outputFile, maxFilesPerConfig, maxConfigs, analysisConfigFile`；两个数量参数为 `-1` 表示全部处理。确有额外模式参数时再参照 `calculate_c22deltapt` 插入。
 - 输出写入独立 `TDirectory`。如果下游还要做归一化或组装（例如 `1/N_ev d²N/dp_T dη`），上游只输出原始计数，不在这里组装；事件计数用 `hEventCount` 或 `hCent`，需要分中心度画图时输出 pT-centrality 的 `TH2D` 或 pT-η-centrality 的 `TH3D`，让下游自行切中心度 bin。
-- 完成后至少用 `maxFilesPerConfig=1, maxConfigs=1` 在 O2 环境中跑一次，确认配置解析、事件/粒子读取和输出对象路径正确。
+- 完成后至少用 `maxFilesPerConfig=1, maxConfigs=1` 在普通 ROOT 环境中跑一次，确认配置解析、事件/粒子读取和输出对象路径正确。
 
 ## 通用要求
 

@@ -31,8 +31,7 @@ analysis=${7:-../config/config.json}
 use_pure=${8:--1}
 [[ $max_files =~ ^-?[0-9]+$ && $max_configs =~ ^-?[0-9]+$ && $use_pure =~ ^-?[0-9]+$ ]] || usage
 [[ $macro == calculate_c22deltapt || $# -lt 8 ]] || usage
-command -v root >/dev/null || { echo "ROOT is not available; load O2Physics first" >&2; exit 1; }
-command -v hadd >/dev/null || { echo "hadd is not available; load O2Physics first" >&2; exit 1; }
+command -v root >/dev/null || { echo "ROOT is not available; load ROOT first" >&2; exit 1; }
 
 cd "$(dirname "$0")"
 part_dir=$(mktemp -d "${TMPDIR:-/tmp}/ampt-shards.XXXXXX")
@@ -79,6 +78,13 @@ if (( failed )); then
     exit 1
 fi
 
-hadd -f "$output" "${parts[@]}"
+printf '%s\n' "${parts[@]}" > "$part_dir/inputs.txt"
+output_arg=$(root_quote "$output")
+input_list_arg=$(root_quote "$part_dir/inputs.txt")
+merge_call=$(printf 'merge_results.cpp("%s","%s")' "$output_arg" "$input_list_arg")
+if ! root -l -b -q "$merge_call"; then
+    echo "Merge failed; logs and partial files are in $part_dir" >&2
+    exit 1
+fi
 echo "Merged output: $output"
 rm -rf "$part_dir"

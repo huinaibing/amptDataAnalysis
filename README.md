@@ -1,7 +1,10 @@
 # AMPT Data Analysis
 
 ROOT macros for producing O2-compatible flow and mean-pT outputs from AMPT
-particle trees. Run the macros from `script/` inside an O2Physics environment.
+particle trees. Run the macros from `script/` with ROOT 6 and C++17 support.
+The required O2Physics sources are included in `external/o2physics/`; an
+O2Physics installation is no longer required. ROOT interprets these sources
+directly, so run macros without the ACLiC `+` suffix.
 
 ## Entry points
 
@@ -32,8 +35,8 @@ root -l -b -q 'calculate_c22deltapt.cpp("../config/cent_cfg.json", "/tmp/c22.roo
 root -l -b -q 'calculate_pidptcorrelations.cpp("../config/cent_cfg.json", "/tmp/pidpt.root", 1, 1, "../config/config.json")'
 ```
 
-To run one of the four main macros across independent ROOT processes, load the
-O2Physics environment and run from `script/`:
+To run the analysis across independent ROOT processes, load ROOT and run
+from `script/`:
 
 ```bash
 ./run_parallel.sh calculate_v2ptrho 4 ../config/cent_cfg.json /tmp/v2ptrho.root -1 -1 ../config/config.json
@@ -44,10 +47,31 @@ The second argument is the number of processes. The same command accepts
 `calculate_flowGfwOmegaXi`, `calculate_flowPbpbPikp`, or
 `calculate_ptspectra`. For `calculate_c22deltapt`, an optional final
 argument selects `usePure` (`-1`, `0`, or `1`). Each process reads a disjoint
-set of input file numbers; `hadd` merges their output after all succeed. The
+set of input file numbers; `merge_results.cpp` loads the bundled
+`FlowContainer` and merges their output after all succeed. The
 script prints the location of per-process ROOT files and logs. Direct macro
 calls still work; their optional final arguments are `shardIndex` and
 `shardCount`.
+
+On the CERN server, generate the input JSON with `update_ampt_json_eos.sh`
+from the repository root, after setting its path variables. Then run, for
+example:
+
+```bash
+cd script
+root -l -b -q 'calculate_v2ptrho.cpp("../config/cent_cfg_ampt_eos.json", "/tmp/v2ptrho.root", 1, 1, "../config/config.json")'
+./run_parallel.sh calculate_v2ptrho 4 ../config/cent_cfg_ampt_eos.json /tmp/v2ptrho_all.root -1 -1 ../config/config.json
+```
+
+The JSON `path` may be an EOS mount path or an XRootD prefix such as
+`root://eosuser.cern.ch//eos/user/q/qiuyu/ampt/AMPT_NEW/Result/ampt_<id>_`.
+The latter requires ROOT's XRootD support and EOS authentication. JSON
+configuration files and output paths in these examples remain local.
+
+For postprocessing with plain ROOT, load
+`external/o2physics/FlowContainerRoot.h` before reading `FlowContainer`
+objects. The persisted class names, versions, and output paths match O2.
+See `external/o2physics/README.md` for upstream revisions and local changes.
 
 ## Configuration
 
@@ -81,6 +105,7 @@ boundaries, centrality bins, and bootstrap subsamples for
 - `dataFrame/`: plain data types and JSON configuration reader.
 - `utils.h`: FlowContainer and v2-pT-rho output helpers.
 - `selection.h`: compatibility wrappers for older macros.
+- `external/o2physics/`: bundled ROOT-only flow dependencies and license.
 
 The flow eta gap and mean-pT eta interval are independent. Species-specific
 pT ranges are also independent, even where their current defaults are equal.

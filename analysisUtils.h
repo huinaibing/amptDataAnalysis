@@ -5,7 +5,7 @@
 #include "dataFrame/fileName.h"
 #include "eventManager.h"
 
-#include "PWGCF/GenericFramework/Core/GFW.h"
+#include "external/o2physics/GFWRoot.h"
 
 #include "TDatabasePDG.h"
 

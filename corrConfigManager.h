@@ -18,7 +18,7 @@
 #ifndef AMPT_DATA_ANALYSIS_CORR_CONFIG_MANAGER_H
 #define AMPT_DATA_ANALYSIS_CORR_CONFIG_MANAGER_H
 
-#include "PWGCF/GenericFramework/Core/GFW.h"
+#include "external/o2physics/GFWRoot.h"
 #include <cstddef>
 #include <stdexcept>
 #include <string>
