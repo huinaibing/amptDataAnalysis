@@ -5,3 +5,4 @@
 **/*.json
 !config/
 !config/*.json
+script/condor_runs/
