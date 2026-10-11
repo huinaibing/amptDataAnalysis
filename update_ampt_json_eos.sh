@@ -8,6 +8,7 @@
 set -euo pipefail
 
 # ============ 可配置项 ============
+export EOS_MGM_URL="root://eosuser.cern.ch"          # CERN 用户 EOS 服务，避免连接 localhost
 SEARCH_DIR="/eos/user/q/qiuyu/ampt/AMPT_NEW/Result/"  # 搜索目录
 BASE_PATH="/eos/user/q/qiuyu/ampt/AMPT_NEW/Result/"   # JSON 中 path 前缀
 OUTPUT_JSON="./config/cent_cfg_ampt_eos.json"        # 输出 JSON 路径；从项目根目录运行
