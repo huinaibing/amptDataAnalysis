@@ -75,6 +75,13 @@ The JSON `path` may be an EOS mount path or an XRootD prefix such as
 The latter requires ROOT's XRootD support and EOS authentication. JSON
 configuration files and output paths in these examples remain local.
 
+For hydro files named `hydro_<id>_<number>.root`, run
+`./update_hydro_json_eos.sh` from the repository root on lxplus. Its path
+variables default to `/eos/user/q/qiuyu/hydro/result/PbPb5360/particles/`,
+and it writes `config/cent_cfg_hydro_eos.json` without changing the local
+hydro input list. Like the AMPT version, it uses `eos ls -F` instead of
+scanning the EOS mount with `find`.
+
 ## CERN HTCondor
 
 For large server runs, use HTCondor so the ROOT processes run on batch
@@ -95,6 +102,21 @@ file sharding and deterministic bootstrap identities match `run_parallel.sh`.
 The repository's original JSON and analysis macros are unchanged.
 For `calculate_c22deltapt`, set `c22_delta_pt_output.use_pure` in
 `ANALYSIS_JSON`; the Condor shells do not define or override this mode.
+
+To submit hydro data with the same analysis, set these variables:
+
+```bash
+INPUT_JSON="$REPO_DIR/config/cent_cfg_hydro_eos.json"
+OUTPUT_NAME="myAnalysisResultV2PtRho_hydro.root"
+EOS_OUTPUT_DIR="root://eosuser.cern.ch//eos/user/q/qiuyu/hydro/condor"
+```
+
+`MACRO` still selects the calculation (for example `calculate_v2ptrho`),
+and `ANALYSIS_JSON` still selects the physics settings. Use a separate
+analysis JSON if hydro needs different selections, centrality settings,
+or output axes. ROOT setup and the EOS endpoint use the same defaults;
+choose shard and job limits for the dataset size. The hydro ROOT files
+must expose the same `particles` tree and branches expected by `dataLoader.h`.
 
 `ROOT_SETUP` selects a fixed ordinary ROOT environment available to the
 workers; the default is the CERN CVMFS LCG_108 EL9/gcc13 view (ROOT 6.36.02).
