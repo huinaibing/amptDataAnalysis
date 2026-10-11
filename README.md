@@ -6,6 +6,11 @@ The required O2Physics sources are included in `external/o2physics/`; an
 O2Physics installation is no longer required. ROOT interprets these sources
 directly, so run macros without the ACLiC `+` suffix.
 
+The JSON parser in `dataFrame/json.hpp` is the unmodified nlohmann/json
+v3.12.0 `single_include/nlohmann/json.hpp` from the upstream release tag.
+It includes all JSON implementation headers, so no system nlohmann/json
+installation is required. Its MIT license is in `dataFrame/JSON_LICENSE.MIT`.
+
 ## Entry points
 
 - `script/calculate_v2ptrho.cpp` produces the `processData`-style v2-pT-rho
