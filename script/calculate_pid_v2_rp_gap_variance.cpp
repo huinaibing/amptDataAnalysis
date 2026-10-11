@@ -35,8 +35,10 @@ struct SpeciesMoments {
   Subevent positive;
 };
 
-// All three profiles share exactly the same selected events and event weights.
-// TProfile/TProfile2D keep mergeable entries and sums for ROOT hadd.
+// The two first moments use the multiplicity of their own eta subevent as the
+// event weight. The cross moment uses the product of the two subevent
+// multiplicities. TProfile/TProfile2D keep mergeable weighted sums for ROOT
+// hadd.
 struct Profiles {
   TProfile negative;
   TProfile positive;
@@ -72,15 +74,19 @@ struct Profiles {
                        static_cast<int>(edges.size()) - 1, edges.data(),
                        nGroups, 0., static_cast<double>(nGroups)) {}
 
-  void fill(double centrality, int group, double a, double b) {
-    negative.Fill(centrality, a);
-    positive.Fill(centrality, b);
-    product.Fill(centrality, a * b);
+  void fill(double centrality, int group, double a, double b,
+            int countNegative, int countPositive) {
+    const double negativeWeight = static_cast<double>(countNegative);
+    const double positiveWeight = static_cast<double>(countPositive);
+    const double productWeight = negativeWeight * positiveWeight;
+    negative.Fill(centrality, a, negativeWeight);
+    positive.Fill(centrality, b, positiveWeight);
+    product.Fill(centrality, a * b, productWeight);
     validEvents.Fill(centrality);
     const double groupCoordinate = group + 0.5;
-    negativeByGroup.Fill(centrality, groupCoordinate, a);
-    positiveByGroup.Fill(centrality, groupCoordinate, b);
-    productByGroup.Fill(centrality, groupCoordinate, a * b);
+    negativeByGroup.Fill(centrality, groupCoordinate, a, negativeWeight);
+    positiveByGroup.Fill(centrality, groupCoordinate, b, positiveWeight);
+    productByGroup.Fill(centrality, groupCoordinate, a * b, productWeight);
   }
 
   void write() {
@@ -97,8 +103,10 @@ struct Profiles {
 } // namespace ampt_pid_v2_rp_gap_variance_macro
 
 /**
- * Save mergeable, event-weighted RP-projected PID v2 moments for two eta
- * subevents. Both sides must have at least one selected PID particle.
+ * Save mergeable, multiplicity-weighted RP-projected PID v2 moments for two
+ * eta subevents. The A and B first moments use N_A and N_B, respectively;
+ * the cross moment uses N_A*N_B. Both sides must have at least one selected
+ * PID particle.
  * No variance (or its uncertainty) is constructed in this upstream macro.
  *
  * Run directly in the O2Physics environment from script/, or use
@@ -164,7 +172,8 @@ void calculate_pid_v2_rp_gap_variance(
             continue;
           }
           profiles[species]->fill(centrality, group,
-                                  sample.negative.v2(), sample.positive.v2());
+                                  sample.negative.v2(), sample.positive.v2(),
+                                  sample.negative.count, sample.positive.count);
         }
       });
 

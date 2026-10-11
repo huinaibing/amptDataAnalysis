@@ -81,4 +81,4 @@ fi
 
 hadd -f "$output" "${parts[@]}"
 echo "Merged output: $output"
-echo "Shard logs and files: $part_dir"
+rm -rf "$part_dir"
