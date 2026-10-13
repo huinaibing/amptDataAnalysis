@@ -37,19 +37,20 @@ namespace ampt_pt_spectra_macro
  *
  * Event and track iteration follow the same streaming pattern as the other
  * macros in this directory. The selection cuts and all histogram axes are
- * read from the "pt_spectra_output" block in config/config.json.
+ * read from the "pt_spectra_output" block in config/calculate_ptspectra.json.
  */
 void calculate_ptspectra(
     const char *inputConfigFile = "../config/cent_cfg.json",
     const char *outputFile = "myAnalysisResultPtSpectra.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json",
+    const char *analysisConfigFile = "../config/calculate_ptspectra.json",
     int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_pt_spectra_macro;
 
-  AnalysisConfig config = loadAnalysisConfig(analysisConfigFile);
+  AnalysisConfig config = loadAnalysisConfig(
+      analysisConfigFile, "pt_spectra_output");
   config.strictPtBounds = config.ptSpectraOutput.strictPtBounds;
   config.strictEtaBounds = config.ptSpectraOutput.strictEtaBounds;
 

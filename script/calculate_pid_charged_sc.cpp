@@ -19,10 +19,11 @@ void calculate_pid_charged_sc(
     const char *inputConfigFile = "../config/cent_cfg_ampt.json",
     const char *outputFile = "pid_charged_sc_moments.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json",
+    const char *analysisConfigFile = "../config/calculate_pid_charged_sc.json",
     int shardIndex = 0, int shardCount = 1) {
   using namespace ampt_analysis;
-  const AnalysisConfig config = loadAnalysisConfig(analysisConfigFile);
+  const AnalysisConfig config = loadAnalysisConfig(
+      analysisConfigFile, "pid_charged_sc_output");
   const auto &settings = config.pidChargedScOutput;
   const auto centralityEdges = makeAxisEdges(settings.centralityAxis);
   const auto groupEdges = makeAxisEdges(settings.bootstrapAxis);

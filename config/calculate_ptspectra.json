@@ -1,0 +1,121 @@
+{
+    "selection": {
+        "flow_subevents": {
+            "eta_max": 0.8,
+            "inner_abs_eta": 0.4
+        },
+        "mean_pt_abs_eta_max": 0.4,
+        "pt_ranges": {
+            "charged": {
+                "min": 0.2,
+                "max": 3.0
+            },
+            "pion": {
+                "min": 0.2,
+                "max": 3.0
+            },
+            "kaon": {
+                "min": 0.2,
+                "max": 3.0
+            },
+            "proton": {
+                "min": 0.2,
+                "max": 3.0
+            }
+        }
+    },
+    "centrality_from_impact_parameter": {
+        "pi": 3.141592653589793,
+        "reference_radius_squared": 7.84
+    },
+    "bootstrap": {
+        "random_seed": 0
+    },
+    "pt_spectra_output": {
+        "selection": {
+            "eta_min": -0.8,
+            "eta_max": 0.8,
+            "rapidity_min": -0.5,
+            "rapidity_max": 0.5,
+            "strict_pt_bounds": true,
+            "strict_eta_bounds": true,
+            "strict_rapidity_bounds": true
+        },
+        "axes": {
+            "pt": {
+                "binning": "variable",
+                "edges": [
+                    0.2,
+                    0.25,
+                    0.3,
+                    0.35,
+                    0.4,
+                    0.45,
+                    0.5,
+                    0.55,
+                    0.6,
+                    0.65,
+                    0.7,
+                    0.75,
+                    0.8,
+                    0.85,
+                    0.9,
+                    0.95,
+                    1.0,
+                    1.1,
+                    1.2,
+                    1.3,
+                    1.4,
+                    1.5,
+                    1.6,
+                    1.7,
+                    1.8,
+                    1.9,
+                    2.0,
+                    2.2,
+                    2.4,
+                    2.6,
+                    2.8,
+                    3.0,
+                    3.5,
+                    4.0,
+                    4.5,
+                    5.0,
+                    5.5,
+                    6.0,
+                    10.0
+                ]
+            },
+            "centrality": {
+                "binning": "uniform",
+                "bins": 90,
+                "min": 0.0,
+                "max": 90.0
+            },
+            "phi": {
+                "binning": "uniform",
+                "bins": 60,
+                "min": 0.0,
+                "max": 6.283185307179586
+            },
+            "eta": {
+                "binning": "uniform",
+                "bins": 40,
+                "min": -1.0,
+                "max": 1.0
+            },
+            "rapidity": {
+                "binning": "uniform",
+                "bins": 1,
+                "min": -0.5,
+                "max": 0.5
+            },
+            "impact_parameter": {
+                "binning": "uniform",
+                "bins": 50,
+                "min": 0.0,
+                "max": 25.0
+            }
+        }
+    }
+}

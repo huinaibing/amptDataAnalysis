@@ -28,7 +28,7 @@ input=${3:-$default_input}
 output=${4:-$default_output}
 max_files=${5:--1}
 max_configs=${6:--1}
-analysis=${7:-../config/config.json}
+analysis=${7:-../config/$macro.json}
 [[ $max_files =~ ^-?[0-9]+$ && $max_configs =~ ^-?[0-9]+$ ]] || usage
 command -v root >/dev/null || { echo "ROOT is not available; load ROOT first" >&2; exit 1; }
 

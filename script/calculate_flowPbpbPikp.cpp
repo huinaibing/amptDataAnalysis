@@ -122,14 +122,14 @@ void calculate_flowPbpbPikp(
     const char *inputConfigFile = "../config/cent_cfg.json",
     const char *outputFile = "myAnalysisResultFlowPbpbPikp.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json",
+    const char *analysisConfigFile = "../config/calculate_flowPbpbPikp.json",
     int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_flow_pbpb_pikp_macro;
 
-  const AnalysisConfig analysisConfig =
-      loadAnalysisConfig(analysisConfigFile);
+  const AnalysisConfig analysisConfig = loadAnalysisConfig(
+      analysisConfigFile, "flowPbpbPikp_output");
   const FlowPbpbPikpOutputConfig &config =
       analysisConfig.flowPbpbPikpOutput;
   const std::vector<double> ptEdges = makeAxisEdges(config.ptAxis);

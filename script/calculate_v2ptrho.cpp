@@ -117,13 +117,14 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
                        const char *outputFile = "myAnalysisResultV2PtRho.root",
                        int maxFilesPerConfig = -1, int maxConfigs = -1,
                        const char *analysisConfigFile =
-                           "../config/config.json",
+                           "../config/calculate_v2ptrho.json",
                        int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_v2_pt_rho_macro;
 
-  AnalysisConfig config = loadAnalysisConfig(analysisConfigFile);
+  AnalysisConfig config = loadAnalysisConfig(
+      analysisConfigFile, "v2_pt_rho_output");
   config.strictPtBounds = config.v2PtRhoOutput.strictPtBounds;
   config.strictEtaBounds = config.v2PtRhoOutput.strictEtaBounds;
   const auto meanPtEdges = makeAxisEdges(config.v2PtRhoOutput.meanPtAxis);

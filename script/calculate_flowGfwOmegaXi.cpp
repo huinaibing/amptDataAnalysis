@@ -264,7 +264,7 @@ void calculate_flowGfwOmegaXi(
     const char *inputConfigFile = "../config/cent_cfg.json",
     const char *outputFile = "myAnalysisResultFlowGfwOmegaXi.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json",
+    const char *analysisConfigFile = "../config/calculate_flowGfwOmegaXi.json",
     int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;

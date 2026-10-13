@@ -103,11 +103,12 @@ ampt_analysis::pid_charged_sc::Moments bruteForce(
 } // namespace ampt_pid_charged_sc_test
 
 void test_pid_charged_sc(
-    const char *analysisConfigFile = "../config/config.json") {
+    const char *analysisConfigFile = "../config/calculate_pid_charged_sc.json") {
   using namespace ampt_analysis;
   using namespace ampt_analysis::pid_charged_sc;
   using namespace ampt_pid_charged_sc_test;
-  AnalysisConfig config = loadAnalysisConfig(analysisConfigFile);
+  AnalysisConfig config = loadAnalysisConfig(
+      analysisConfigFile, "pid_charged_sc_output");
   config.chargedPt = {0.4, 1.5};
   config.pionPt = {0.2, 2.};
   config.kaonPt = {0.3, 1.};

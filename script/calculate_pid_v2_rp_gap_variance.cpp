@@ -116,12 +116,14 @@ void calculate_pid_v2_rp_gap_variance(
     const char *inputConfigFile = "../config/cent_cfg_ampt.json",
     const char *outputFile = "pid_v2_rp_gap_moments.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json",
+    const char *analysisConfigFile =
+        "../config/calculate_pid_v2_rp_gap_variance.json",
     int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_pid_v2_rp_gap_variance_macro;
-  const AnalysisConfig config = loadAnalysisConfig(analysisConfigFile);
+  const AnalysisConfig config = loadAnalysisConfig(
+      analysisConfigFile, "pid_v2_rp_gap_variance_output");
   const auto &settings = config.pidV2RPGapVarianceOutput;
   const auto edges = makeAxisEdges(settings.centralityAxis);
   const int nGroups = axisBinCount(settings.bootstrapAxis);

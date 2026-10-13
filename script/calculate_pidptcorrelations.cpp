@@ -126,19 +126,20 @@ namespace ampt_pid_pt_correlations_macro
  * Quick test:
  * root -l -b -q 'calculate_pidptcorrelations.cpp(
  * "../config/cent_cfg.json", "/tmp/amptPidPt.root", 1, 1,
- * "../config/config.json")'
+ * "../config/calculate_pidptcorrelations.json")'
  */
 void calculate_pidptcorrelations(
     const char *inputConfigFile = "../config/cent_cfg.json",
     const char *outputFile = "myAnalysisResultPidPtCorrelations.root",
     int maxFilesPerConfig = -1, int maxConfigs = -1,
-    const char *analysisConfigFile = "../config/config.json",
+    const char *analysisConfigFile = "../config/calculate_pidptcorrelations.json",
     int shardIndex = 0, int shardCount = 1)
 {
   using namespace ampt_analysis;
   using namespace ampt_pid_pt_correlations_macro;
 
-  const AnalysisConfig config = loadAnalysisConfig(analysisConfigFile);
+  const AnalysisConfig config = loadAnalysisConfig(
+      analysisConfigFile, "pid_pt_correlations_output");
   const PidPtCorrelationsOutputConfig &outputConfig =
       config.pidPtCorrelationsOutput;
   const auto centralityEdges =

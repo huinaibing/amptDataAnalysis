@@ -4,25 +4,17 @@ set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 REPO_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
 
-# ============ 可配置项：修改这里后直接运行，无需命令行参数 ============
-MACRO="calculate_v2ptrho"  # 与 run_parallel.sh 支持相同的入口
-INPUT_JSON="$REPO_DIR/config/cent_cfg_ampt_eos.json"
-ANALYSIS_JSON="$REPO_DIR/config/config.json"
-OUTPUT_NAME="myAnalysisResultV2PtRho.root"
-EOS_INPUT_ENDPOINT="root://eosuser.cern.ch"  # 转换 JSON 中的 /eos/ 前缀
-EOS_OUTPUT_DIR="root://eosuser.cern.ch//eos/user/q/qiuyu/ampt/condor"
-ROOT_SETUP="/cvmfs/sft.cern.ch/lcg/views/LCG_108/x86_64-el9-gcc13-opt/setup.sh"
-SHARD_COUNT=1000
-MAX_JOBS=1000                 # DAG 中同时排队/运行的节点上限
-MAX_FILES=-1               # 每个原始 JSON entry 的文件上限；-1 表示全部
-MAX_CONFIGS=-1             # 原始 JSON entry 数量上限；-1 表示全部
-RETRIES=2                  # 每个节点失败后最多重试两次
-SUBMIT_DIR="$SCRIPT_DIR/condor_runs"  # CERN 上应位于 AFS，不要放在 EOS
-SUBMIT=true                # false：只生成文件；true：生成后提交 DAG
-# ==================================================================
-
 die() { echo "错误：$*" >&2; exit 1; }
-(( $# == 0 )) || die "请修改脚本开头的变量，不需要传入参数。"
+(( $# <= 1 )) || die "用法：$0 [提交配置文件]；默认读取 config/condor/submit.conf。"
+SUBMIT_CONFIG=${1:-$REPO_DIR/config/condor/submit.conf}
+[[ -f $SUBMIT_CONFIG && -r $SUBMIT_CONFIG ]] || die "找不到或无法读取提交配置：$SUBMIT_CONFIG"
+# 配置沿用 Bash 变量格式，可以使用上面定义的 REPO_DIR 和 SCRIPT_DIR。
+source "$SUBMIT_CONFIG"
+for setting in MACRO INPUT_JSON ANALYSIS_JSON OUTPUT_NAME EOS_INPUT_ENDPOINT \
+    EOS_OUTPUT_DIR ROOT_SETUP SHARD_COUNT MAX_JOBS MAX_FILES MAX_CONFIGS \
+    RETRIES SUBMIT_DIR SUBMIT; do
+    [[ -n ${!setting:-} ]] || die "提交配置缺少或留空 $setting：$SUBMIT_CONFIG"
+done
 command -v python3 >/dev/null || die "未找到 python3。"
 [[ $SHARD_COUNT =~ ^[1-9][0-9]*$ && $MAX_JOBS =~ ^[1-9][0-9]*$ ]] || die "SHARD_COUNT/MAX_JOBS 必须是正整数。"
 [[ $MAX_FILES =~ ^(-1|0|[1-9][0-9]*)$ && $MAX_CONFIGS =~ ^(-1|0|[1-9][0-9]*)$ ]] || die "数量上限必须为 -1 或非负整数。"

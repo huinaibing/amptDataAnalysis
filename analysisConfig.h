@@ -501,7 +501,8 @@ readFlowPbpbPikpOutputConfig(const nlohmann::json &document,
   return config;
 }
 
-inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
+inline AnalysisConfig loadAnalysisConfig(
+    const std::string &jsonPath, const std::string &requiredOutput = "") {
   std::ifstream input(jsonPath);
   if (!input.is_open()) {
     throw std::runtime_error("Cannot open analysis configuration: " +
@@ -510,6 +511,10 @@ inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
 
   nlohmann::json document;
   input >> document;
+  if (!requiredOutput.empty() && !document.contains(requiredOutput)) {
+    throw std::runtime_error("Missing output configuration '" +
+                             requiredOutput + "' in " + jsonPath);
+  }
 
   AnalysisConfig config;
   const auto &selection = document.at("selection");
@@ -532,38 +537,51 @@ inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
   const auto &bootstrap = document.at("bootstrap");
   config.randomSeed = bootstrap.at("random_seed").get<unsigned int>();
 
-  const auto &v2PtRhoOutput = document.at("v2_pt_rho_output");
-  config.v2PtRhoOutput =
-      readOutputConfig(v2PtRhoOutput, "v2_pt_rho_output");
-  config.v2PtRhoUseImpactParameterCentrality =
-      v2PtRhoOutput.at("use_impact_parameter_centrality").get<bool>();
-  config.v2PtRhoNChargedAxis = readAxisConfig(
-      v2PtRhoOutput.at("axes").at("n_charged"),
-      "v2_pt_rho_output.axes.n_charged");
-  config.v2PtRhoQaNChargedAxis = readAxisConfig(
-      v2PtRhoOutput.at("qa_axes").at("n_charged"),
-      "v2_pt_rho_output.qa_axes.n_charged");
-  config.v2PtRhoQa = readV2PtRhoQaConfig(
-      v2PtRhoOutput, "v2_pt_rho_output.qa_axes");
-  const auto &c22Output = document.at("c22_delta_pt_output");
-  config.c22DeltaPtOutput =
-      readOutputConfig(c22Output, "c22_delta_pt_output");
-  config.c22UsePure = c22Output.at("use_pure").get<bool>();
-  config.pidPtCorrelationsOutput = readPidPtCorrelationsOutputConfig(
-      document.at("pid_pt_correlations_output"),
-      "pid_pt_correlations_output");
-  config.pidV2RPGapVarianceOutput = readPidV2RPGapVarianceOutputConfig(
-      document.at("pid_v2_rp_gap_variance_output"),
-      "pid_v2_rp_gap_variance_output");
+  // Task files contain only their own output block; validate every block
+  // that is present, while the caller requires the one used by its workflow.
+  if (document.contains("v2_pt_rho_output")) {
+    const auto &v2PtRhoOutput = document.at("v2_pt_rho_output");
+    config.v2PtRhoOutput =
+        readOutputConfig(v2PtRhoOutput, "v2_pt_rho_output");
+    config.v2PtRhoUseImpactParameterCentrality =
+        v2PtRhoOutput.at("use_impact_parameter_centrality").get<bool>();
+    config.v2PtRhoNChargedAxis = readAxisConfig(
+        v2PtRhoOutput.at("axes").at("n_charged"),
+        "v2_pt_rho_output.axes.n_charged");
+    config.v2PtRhoQaNChargedAxis = readAxisConfig(
+        v2PtRhoOutput.at("qa_axes").at("n_charged"),
+        "v2_pt_rho_output.qa_axes.n_charged");
+    config.v2PtRhoQa = readV2PtRhoQaConfig(
+        v2PtRhoOutput, "v2_pt_rho_output.qa_axes");
+  }
+  if (document.contains("c22_delta_pt_output")) {
+    const auto &c22Output = document.at("c22_delta_pt_output");
+    config.c22DeltaPtOutput =
+        readOutputConfig(c22Output, "c22_delta_pt_output");
+    config.c22UsePure = c22Output.at("use_pure").get<bool>();
+  }
+  if (document.contains("pid_pt_correlations_output")) {
+    config.pidPtCorrelationsOutput = readPidPtCorrelationsOutputConfig(
+        document.at("pid_pt_correlations_output"),
+        "pid_pt_correlations_output");
+  }
+  if (document.contains("pid_v2_rp_gap_variance_output")) {
+    config.pidV2RPGapVarianceOutput = readPidV2RPGapVarianceOutputConfig(
+        document.at("pid_v2_rp_gap_variance_output"),
+        "pid_v2_rp_gap_variance_output");
+  }
   if (document.contains("pid_charged_sc_output")) {
     config.pidChargedScOutput = readPidChargedScOutputConfig(
         document.at("pid_charged_sc_output"), "pid_charged_sc_output");
   }
-  config.flowPbpbPikpOutput = readFlowPbpbPikpOutputConfig(
-      document.at("flowPbpbPikp_output"), "flowPbpbPikp_output");
-
-  config.ptSpectraOutput = readPtSpectraOutputConfig(
-      document.at("pt_spectra_output"), "pt_spectra_output");
+  if (document.contains("flowPbpbPikp_output")) {
+    config.flowPbpbPikpOutput = readFlowPbpbPikpOutputConfig(
+        document.at("flowPbpbPikp_output"), "flowPbpbPikp_output");
+  }
+  if (document.contains("pt_spectra_output")) {
+    config.ptSpectraOutput = readPtSpectraOutputConfig(
+        document.at("pt_spectra_output"), "pt_spectra_output");
+  }
 
   if (config.flowEtaGap < 0. || config.flowEtaMax <= config.flowEtaGap) {
     throw std::runtime_error(
