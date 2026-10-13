@@ -19,8 +19,11 @@ installation is required. Its MIT license is in `dataFrame/JSON_LICENSE.MIT`.
   `processDataC22DeltaPt`-style profiles under `c22DeltaPt/`.
 - `script/calculate_pidptcorrelations.cpp` produces the
   `processPidPtCorrelations`-style PID mean-pT `FlowContainer`.
+- `script/calculate_pid_charged_sc.cpp` produces the pure PID and charged
+  two-track moments and the mixed two-PID/two-charged four-track moment for
+  SC(v2,PID squared, v2,charged squared), under `pid-charged-sc/`.
 
-All three functions accept:
+These functions accept:
 
 1. input-file JSON path;
 2. output ROOT path;
@@ -50,7 +53,8 @@ from `script/`:
 The second argument is the number of processes. The same command accepts
 `calculate_c22deltapt`, `calculate_pidptcorrelations`, or
 `calculate_flowGfwOmegaXi`, `calculate_flowPbpbPikp`, or
-`calculate_ptspectra`. For `calculate_c22deltapt`, the mode is read from
+`calculate_ptspectra`, `calculate_pid_v2_rp_gap_variance`, or
+`calculate_pid_charged_sc`. For `calculate_c22deltapt`, the mode is read from
 `c22_delta_pt_output.use_pure` in the analysis JSON: `false` selects PID
 POI-ref and `true` selects PID POI-POI Pure. The shell does not accept a
 separate mode argument. Each process reads a disjoint
@@ -172,6 +176,72 @@ For postprocessing with plain ROOT, load
 objects. The persisted class names, versions, and output paths match O2.
 See `external/o2physics/README.md` for upstream revisions and local changes.
 
+## PID–charged SC inputs
+
+Run from `script/` after loading ROOT (no ACLiC compilation):
+
+```bash
+root -n -l -b -q 'calculate_pid_charged_sc.cpp("../config/cent_cfg_ampt.json", "/tmp/pid_charged_sc_moments.root", 1, 1, "../config/config.json")'
+./run_parallel.sh calculate_pid_charged_sc 4 ../config/cent_cfg_ampt.json /tmp/pid_charged_sc_all.root -1 -1 ../config/config.json
+```
+
+For Condor, set `MACRO="calculate_pid_charged_sc"` and
+`OUTPUT_NAME="pid_charged_sc_moments.root"` in `submit_condor.sh`, and choose
+the input list and EOS output directory as usual. Its task directory mapping
+is `pid-charged-sc`; the generic worker already supports this macro's argument
+order and completion message.
+
+The `pid_charged_sc_output` section in `config/config.json` controls eta
+subevents, strict cut boundaries, centrality and subsample axes, and event
+weights. The independent pT windows reuse `selection.pt_ranges` for charged,
+pion, kaon and proton. Defaults select `-0.8 < eta < -0.4` (A) and
+`0.4 < eta < 0.8` (B), 1% centrality bins and 30 disjoint subsamples.
+
+Each `pid-charged-sc/{Pion,Kaon,Proton}/` directory contains:
+
+- `pTwoPID`: PID A–B two-track moment;
+- `pTwoCharged`: charged A–B moment on this species' valid event sample;
+- `pFourPIDCharged`: distinct PID-A, charged-A, PID-B, charged-B moment
+  with harmonics `+2,+2,-2,-2`;
+- the corresponding `*ByGroup` TProfile2D objects (centrality, subsample);
+- `hValidEvents` and `hSumPIDPairs/hSumChargedPairs/hSumMixedQuadruplets`.
+
+Only events with at least one valid mixed quadruplet contribute to all three
+moments. Correlations are evaluated with the bundled GFW cumulant framework.
+`PidChargedScCorrConfigManager` in `corrConfigManager.h` configures the charged,
+PID and overlap regions. For example, the pion mixed four-track config is
+`scPoiPiA scRefA | scOlPiA {2 2} scPoiPiB scRefB | scOlPiB {-2 -2}`.
+GFW recursively subtracts repeated tracks using the actual selection overlap
+on each side. `Calculate(config, 0, false)` supplies the numerator and
+`Calculate(config, 0, true)` the distinct tuple count. All four tracks are
+distinct, including when PID is included in the charged sample. No
+event-by-event square root or POI-reference ratio is used.
+
+With the default `event_weight="combinations"`, each moment uses its own
+distinct pair/quadruplet count, as the other flow macros do. The optional
+`"mixed_quadruplets"` mode weights all three moments by the mixed quadruplet
+count, for a covariance with one common multiplicity-weighted event measure.
+Neither mode uses unit event weights. Do not mix modes when merging results.
+
+Downstream, form SC = `pFourPIDCharged - pTwoPID*pTwoCharged` in the original
+narrow centrality bins, then combine the results with an explicit weight
+convention. NSC divides SC by `pTwoPID*pTwoCharged` when that denominator is
+valid. Use the same operation for each subsample to obtain statistical
+uncertainties. With native tuple weights, the three averages have different
+event weights: this is the conventional correlator-weighted SC estimator,
+rather than an exact covariance under one common event probability measure.
+The two-subevent moments also retain any longitudinal flow decorrelation.
+
+`hEventCount/hCent` are unweighted event-count QA histograms. Fixed `TNamed`
+metadata record the GFW engine, weight mode, harmonic, layout, event sample, subsample
+count and analysis JSON. Only mergeable upstream components are saved; SC,
+NSC and their uncertainties are left to downstream processing.
+
+The numeric regression macro `test/test_pid_charged_sc.cpp` independently
+enumerates all distinct tuples, checks partial overlaps and unequal pT cuts,
+and verifies both weight modes and subsample sums. Run it from `test/` with
+`root -n -l -b -q 'test_pid_charged_sc.cpp("../config/config.json")'`.
+
 ## Configuration
 
 Configuration files live in `config/`:
@@ -203,6 +273,7 @@ boundaries, centrality bins, and bootstrap subsamples for
 - `eventManager.h`: groups streamed rows into one in-memory event at a time.
 - `dataFrame/`: plain data types and JSON configuration reader.
 - `utils.h`: FlowContainer and v2-pT-rho output helpers.
+- `pidChargedSc.h`: PID/charged GFW filling, correlator evaluation and mergeable profiles.
 - `selection.h`: compatibility wrappers for older macros.
 - `external/o2physics/`: bundled ROOT-only flow dependencies and license.
 

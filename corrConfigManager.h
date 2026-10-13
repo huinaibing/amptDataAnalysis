@@ -19,7 +19,10 @@
 #define AMPT_DATA_ANALYSIS_CORR_CONFIG_MANAGER_H
 
 #include "external/o2physics/GFWRoot.h"
+#include <array>
+#include <cmath>
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -345,6 +348,69 @@ private:
       mNameToIndex[meta.name] = i;
     }
   }
+};
+
+// Separate manager for the PID-charged SC workflow. Each eta side contains
+// one PID POI and one charged reference in the mixed correlator; GFW handles
+// the overlap contraction independently on each side.
+class PidChargedScCorrConfigManager {
+public:
+  explicit PidChargedScCorrConfigManager(GFW &gfw, double etaGap,
+                                        double etaMax) {
+    if (!std::isfinite(etaGap) || !std::isfinite(etaMax) || etaGap < 0. ||
+        etaMax <= etaGap || !gfw.fRegions.empty()) {
+      throw std::invalid_argument(
+          "PidChargedScCorrConfigManager requires an empty GFW and 0 <= etaGap < etaMax");
+    }
+    // GFW::Fill uses open intervals. Widen the storage bounds by one floating
+    // point step so the external strict/inclusive track cut controls endpoints.
+    const double infinity = std::numeric_limits<double>::infinity();
+    const auto addSides = [&](const std::string &base, int mask) {
+      gfw.AddRegion(base + "A", std::nextafter(-etaMax, -infinity),
+                    std::nextafter(-etaGap, infinity), 1, mask);
+      gfw.AddRegion(base + "B", std::nextafter(etaGap, -infinity),
+                    std::nextafter(etaMax, infinity), 1, mask);
+    };
+    addSides("scRef", Mask::kRef);
+    const std::array<const char *, 3> names{"Pi", "Ka", "Pr"};
+    const std::array<int, 3> masks{Mask::kPion, Mask::kKaon, Mask::kProton};
+    const std::array<int, 3> overlapMasks{
+        Mask::kPionOverlap, Mask::kKaonOverlap, Mask::kProtonOverlap};
+    for (std::size_t species = 0; species < names.size(); ++species) {
+      addSides(std::string("scPoi") + names[species], masks[species]);
+      addSides(std::string("scOl") + names[species], overlapMasks[species]);
+    }
+    mChargedTwo = gfw.GetCorrelatorConfig(
+        "scRefA {2} scRefB {-2}", "ScChargedTwo", false);
+    for (std::size_t species = 0; species < names.size(); ++species) {
+      const std::string poi = std::string("scPoi") + names[species];
+      const std::string overlap = std::string("scOl") + names[species];
+      mPidTwo[species] = gfw.GetCorrelatorConfig(
+          poi + "A {2} " + poi + "B {-2}",
+          std::string("Sc") + names[species] + "Two", false);
+      mMixedFour[species] = gfw.GetCorrelatorConfig(
+          poi + "A scRefA | " + overlap + "A {2 2} " +
+              poi + "B scRefB | " + overlap + "B {-2 -2}",
+          std::string("Sc") + names[species] + "ChargedFour", false);
+    }
+    // Derive all required harmonics and weight powers from the configs.
+    if (gfw.CreateRegions() != 14) {
+      throw std::runtime_error("Failed to create PID-charged SC GFW regions");
+    }
+  }
+
+  const GFW::CorrConfig &ChargedTwo() const { return mChargedTwo; }
+  const GFW::CorrConfig &PidTwo(std::size_t species) const {
+    return mPidTwo.at(species);
+  }
+  const GFW::CorrConfig &MixedFour(std::size_t species) const {
+    return mMixedFour.at(species);
+  }
+
+private:
+  GFW::CorrConfig mChargedTwo;
+  std::array<GFW::CorrConfig, 3> mPidTwo;
+  std::array<GFW::CorrConfig, 3> mMixedFour;
 };
 
 #endif // AMPT_DATA_ANALYSIS_CORR_CONFIG_MANAGER_H

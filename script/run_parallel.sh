@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
     echo "Usage: $0 <macro> <workers> [input-json] [output-root] [max-files] [max-configs] [analysis-json]" >&2
-    echo "Macros: calculate_v2ptrho, calculate_c22deltapt, calculate_pidptcorrelations, calculate_flowGfwOmegaXi, calculate_flowPbpbPikp, calculate_ptspectra, calculate_pid_v2_rp_gap_variance" >&2
+    echo "Macros: calculate_v2ptrho, calculate_c22deltapt, calculate_pidptcorrelations, calculate_flowGfwOmegaXi, calculate_flowPbpbPikp, calculate_ptspectra, calculate_pid_v2_rp_gap_variance, calculate_pid_charged_sc" >&2
     exit 2
 }
 
@@ -19,6 +19,7 @@ case "$macro" in
     calculate_flowPbpbPikp) default_output=myAnalysisResultFlowPbpbPikp.root ;;
     calculate_ptspectra) default_output=myAnalysisResultPtSpectra.root ;;
     calculate_pid_v2_rp_gap_variance) default_output=pid_v2_rp_gap_moments.root; default_input=../config/cent_cfg_ampt.json ;;
+    calculate_pid_charged_sc) default_output=pid_charged_sc_moments.root; default_input=../config/cent_cfg_ampt.json ;;
     *) usage ;;
 esac
 [[ $workers =~ ^[1-9][0-9]*$ ]] || usage

@@ -5,7 +5,7 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 REPO_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
 
 # ============ 可配置项：修改这里后直接运行，无需命令行参数 ============
-MACRO="calculate_v2ptrho"  # 与 run_parallel.sh 支持相同的七个入口
+MACRO="calculate_v2ptrho"  # 与 run_parallel.sh 支持相同的入口
 INPUT_JSON="$REPO_DIR/config/cent_cfg_ampt_eos.json"
 ANALYSIS_JSON="$REPO_DIR/config/config.json"
 OUTPUT_NAME="myAnalysisResultV2PtRho.root"
@@ -64,6 +64,7 @@ task_dirs = {
     "calculate_flowPbpbPikp": "flow-pbpb-pikp_TPC_TOF",
     "calculate_ptspectra": "pt-spectra",
     "calculate_pid_v2_rp_gap_variance": "pid-v2-rp-gap-moments",
+    "calculate_pid_charged_sc": "pid-charged-sc",
 }
 
 def check(condition, message):

@@ -59,6 +59,19 @@ struct PidV2RPGapVarianceOutputConfig {
   AxisConfig bootstrapAxis{AxisBinning::Uniform, 30, 0., 30., {}};
 };
 
+struct PidChargedScOutputConfig {
+  bool strictPtBounds = true;
+  bool strictEtaBounds = true;
+  double innerAbsEta = 0.4;
+  double etaMax = 0.8;
+  // "combinations": each correlator uses its own distinct tuple count.
+  // "mixed_quadruplets": all three moments use the mixed four-track count.
+  // Both choices use multiplicity weights; neither uses unit event weights.
+  std::string eventWeight = "combinations";
+  AxisConfig centralityAxis{AxisBinning::Uniform, 90, 0., 90., {}};
+  AxisConfig bootstrapAxis{AxisBinning::Uniform, 30, 0., 30., {}};
+};
+
 struct V2PtRhoQaConfig {
   AxisConfig centralityAxis;
   AxisConfig ptAxis;
@@ -171,6 +184,7 @@ struct AnalysisConfig {
         80., 90.}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
   PidV2RPGapVarianceOutputConfig pidV2RPGapVarianceOutput;
+  PidChargedScOutputConfig pidChargedScOutput;
   FlowPbpbPikpOutputConfig flowPbpbPikpOutput;
   PtSpectraOutputConfig ptSpectraOutput{
       -0.8,
@@ -332,6 +346,43 @@ readPidV2RPGapVarianceOutputConfig(const nlohmann::json &document,
                                          name + ".axes.centrality");
   result.bootstrapAxis = readAxisConfig(axes.at("bootstrap"),
                                         name + ".axes.bootstrap");
+  if (axisBinCount(result.bootstrapAxis) < 2) {
+    throw std::runtime_error(name + ": bootstrap axis needs at least 2 bins");
+  }
+  return result;
+}
+
+inline PidChargedScOutputConfig
+readPidChargedScOutputConfig(const nlohmann::json &document,
+                             const std::string &name) {
+  const auto &selection = document.at("selection");
+  const auto &axes = document.at("axes");
+  PidChargedScOutputConfig result;
+  result.strictPtBounds = selection.at("strict_pt_bounds").get<bool>();
+  result.strictEtaBounds = selection.at("strict_eta_bounds").get<bool>();
+  result.innerAbsEta = selection.at("inner_abs_eta").get<double>();
+  result.etaMax = selection.at("eta_max").get<double>();
+  if (!std::isfinite(result.innerAbsEta) || !std::isfinite(result.etaMax) ||
+      result.innerAbsEta < 0. || result.etaMax <= result.innerAbsEta) {
+    throw std::runtime_error(name + ": require 0 <= inner_abs_eta < eta_max");
+  }
+  result.eventWeight = document.at("event_weight").get<std::string>();
+  if (result.eventWeight != "combinations" &&
+      result.eventWeight != "mixed_quadruplets") {
+    throw std::runtime_error(name +
+                             ": event_weight must be combinations or mixed_quadruplets");
+  }
+  result.centralityAxis =
+      readAxisConfig(axes.at("centrality"), name + ".axes.centrality");
+  result.bootstrapAxis =
+      readAxisConfig(axes.at("bootstrap"), name + ".axes.bootstrap");
+  for (const auto &axis : {result.centralityAxis, result.bootstrapAxis}) {
+    const auto edges = makeAxisEdges(axis);
+    if (!std::all_of(edges.begin(), edges.end(),
+                     [](double edge) { return std::isfinite(edge); })) {
+      throw std::runtime_error(name + ": axis edges must be finite");
+    }
+  }
   if (axisBinCount(result.bootstrapAxis) < 2) {
     throw std::runtime_error(name + ": bootstrap axis needs at least 2 bins");
   }
@@ -504,6 +555,10 @@ inline AnalysisConfig loadAnalysisConfig(const std::string &jsonPath) {
   config.pidV2RPGapVarianceOutput = readPidV2RPGapVarianceOutputConfig(
       document.at("pid_v2_rp_gap_variance_output"),
       "pid_v2_rp_gap_variance_output");
+  if (document.contains("pid_charged_sc_output")) {
+    config.pidChargedScOutput = readPidChargedScOutputConfig(
+        document.at("pid_charged_sc_output"), "pid_charged_sc_output");
+  }
   config.flowPbpbPikpOutput = readFlowPbpbPikpOutputConfig(
       document.at("flowPbpbPikp_output"), "flowPbpbPikp_output");
 
