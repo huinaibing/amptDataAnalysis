@@ -382,6 +382,8 @@ public:
     }
     mChargedTwo = gfw.GetCorrelatorConfig(
         "scRefA {2} scRefB {-2}", "ScChargedTwo", false);
+    mChargedFour = gfw.GetCorrelatorConfig(
+        "scRefA {2 2} scRefB {-2 -2}", "ScChargedFour", false);
     for (std::size_t species = 0; species < names.size(); ++species) {
       const std::string poi = std::string("scPoi") + names[species];
       const std::string overlap = std::string("scOl") + names[species];
@@ -400,6 +402,7 @@ public:
   }
 
   const GFW::CorrConfig &ChargedTwo() const { return mChargedTwo; }
+  const GFW::CorrConfig &ChargedFour() const { return mChargedFour; }
   const GFW::CorrConfig &PidTwo(std::size_t species) const {
     return mPidTwo.at(species);
   }
@@ -409,6 +412,7 @@ public:
 
 private:
   GFW::CorrConfig mChargedTwo;
+  GFW::CorrConfig mChargedFour;
   std::array<GFW::CorrConfig, 3> mPidTwo;
   std::array<GFW::CorrConfig, 3> mMixedFour;
 };

@@ -88,6 +88,11 @@ task_arg=$(root_quote "$TASK_DIR")
 # 重新打开已关闭的文件，拒绝 zombie、恢复过的文件或缺少任务目录的输出。
 check_call=$(printf '{ TFile f("%s", "READ"); auto d = f.GetDirectory("%s"); gSystem->Exit(f.IsZombie() || f.TestBit(TFile::kRecovered) || !d || d->GetListOfKeys()->GetSize() == 0 ? 1 : 0); }' \
     "$output_arg" "$task_arg")
+if [[ $MACRO == calculate_pid_charged_sc ]]; then
+    # Both analysis shards (including empty shards) and merged files must
+    # contain the independent charged baseline before uploading to EOS.
+    check_call=$(printf '{ TFile f("%s", "READ"); auto d=f.GetDirectory("pid-charged-sc/Charged"); gSystem->Exit(f.IsZombie() || f.TestBit(TFile::kRecovered) || !d || !d->Get("pTwoCharged") || !d->Get("pFourCharged") || !d->Get("pTwoChargedByGroup") || !d->Get("pFourChargedByGroup") ? 1 : 0); }' "$output_arg")
+fi
 if ! root -n -l -b -q -e '#include "../external/o2physics/FlowContainerRoot.h"' -e "$check_call"; then
     die "输出 ROOT 文件检查失败。"
 fi

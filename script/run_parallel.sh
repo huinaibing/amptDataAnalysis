@@ -58,7 +58,7 @@ for (( shard = 0; shard < workers; ++shard )); do
         call=$(printf '%s.cpp("%s","%s",%s,%s,"%s",%d,%d)' \
             "$macro" "$input" "$part_arg" "$max_files" "$max_configs" "$analysis" "$shard" "$workers")
     fi
-    root -l -b -q "$call" >"$part_dir/part_${shard}.log" 2>&1 &
+    root -n -l -b -q "$call" >"$part_dir/part_${shard}.log" 2>&1 &
     pids+=("$!")
 done
 
@@ -82,9 +82,17 @@ printf '%s\n' "${parts[@]}" > "$part_dir/inputs.txt"
 output_arg=$(root_quote "$output")
 input_list_arg=$(root_quote "$part_dir/inputs.txt")
 merge_call=$(printf 'merge_results.cpp("%s","%s")' "$output_arg" "$input_list_arg")
-if ! root -l -b -q "$merge_call"; then
+if ! root -n -l -b -q "$merge_call"; then
     echo "Merge failed; logs and partial files are in $part_dir" >&2
     exit 1
+fi
+if [[ $macro == calculate_pid_charged_sc ]]; then
+    # Reject stale/partial results that cannot supply the charged baseline.
+    check_call=$(printf '{ TFile f("%s", "READ"); auto d=f.GetDirectory("pid-charged-sc/Charged"); gSystem->Exit(f.IsZombie() || !d || !d->Get("pTwoCharged") || !d->Get("pFourCharged") || !d->Get("pTwoChargedByGroup") || !d->Get("pFourChargedByGroup") ? 1 : 0); }' "$output_arg")
+    if ! root -n -l -b -q -e "$check_call"; then
+        echo "Missing charged SC baseline components; logs and partial files are in $part_dir" >&2
+        exit 1
+    fi
 fi
 echo "Merged output: $output"
 rm -rf "$part_dir"

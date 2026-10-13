@@ -37,7 +37,9 @@ ampt_analysis::pid_charged_sc::Moments bruteForce(
   using namespace ampt_analysis;
   std::array<std::vector<std::size_t>, 2> pid, charged;
   const auto &settings = config.pidChargedScOutput;
-  const auto &definition = speciesDefinitions().at(species);
+  // species=3 replaces the PID leg by charged in the independent tuple
+  // enumeration, yielding the pure charged four-track baseline.
+  const auto *definition = species < 3 ? &speciesDefinitions().at(species) : nullptr;
   for (std::size_t i = 0; i < event.particles.size(); ++i) {
     const auto &particle = event.particles[i];
     const double eta = particle.GetEta();
@@ -53,13 +55,14 @@ ampt_analysis::pid_charged_sc::Moments bruteForce(
       continue;
     }
     const std::size_t side = eta < 0. ? 0 : 1;
-    if (isChargedPdg(particle.pdgPid) &&
-        config.chargedPt.contains(pt, settings.strictPtBounds)) {
+    const bool selectedCharged = isChargedPdg(particle.pdgPid) &&
+        config.chargedPt.contains(pt, settings.strictPtBounds);
+    if (selectedCharged) {
       charged[side].push_back(i);
     }
-    if (std::abs(particle.pdgPid) == definition.absPdg &&
-        ptRangeForPdg(definition.absPdg, config).contains(
-            pt, settings.strictPtBounds)) {
+    if (definition ? (std::abs(particle.pdgPid) == definition->absPdg &&
+                      ptRangeForPdg(definition->absPdg, config).contains(
+                          pt, settings.strictPtBounds)) : selectedCharged) {
       pid[side].push_back(i);
     }
   }
@@ -120,6 +123,10 @@ void test_pid_charged_sc(
   const std::vector<double> cent{0., 90.}, groups{0., 2., 5.};
   Profiles profiles(cent, groups);
   Profiles commonProfiles(cent, groups);
+  ChargedProfiles chargedProfiles(cent, groups), commonChargedProfiles(cent, groups);
+  std::array<double, 2> chargedSums{}, chargedWeights{}, commonChargedSums{};
+  double chargedFourWeightSum = 0.;
+  int chargedValidEvents = 0;
   std::array<double, 3> sums{}, weights{}, commonSums{};
   double fourWeightSum = 0.;
   int validEvents = 0;
@@ -146,6 +153,32 @@ void test_pid_charged_sc(
                          track(211, 1., 0., 0.)};
     }
     fillGfw(gfw, event, config);
+    const auto chargedActual = calculateChargedMoments(gfw, correlations);
+    const auto chargedExpected = bruteForce(event, config, 3);
+    near(chargedActual.two.numerator, chargedExpected.chargedTwo.numerator,
+         "charged pair numerator");
+    near(chargedActual.two.pairs, chargedExpected.chargedTwo.pairs,
+         "charged pair count");
+    near(chargedActual.four.numerator, chargedExpected.mixedFour.numerator,
+         "charged four numerator");
+    near(chargedActual.four.pairs, chargedExpected.mixedFour.pairs,
+         "charged four count");
+    const double chargedGroup = sampleAxisCoordinate(groups, (sample + 0.5) / 120.);
+    config.pidChargedScOutput.eventWeight = "combinations";
+    chargedProfiles.fill(10., chargedGroup, chargedActual, config.pidChargedScOutput);
+    config.pidChargedScOutput.eventWeight = "mixed_quadruplets";
+    commonChargedProfiles.fill(10., chargedGroup, chargedActual, config.pidChargedScOutput);
+    if (chargedExpected.valid()) {
+      ++chargedValidEvents;
+      chargedFourWeightSum += chargedExpected.mixedFour.pairs;
+      const std::array<CorrelationResult, 2> e{
+          chargedExpected.chargedTwo, chargedExpected.mixedFour};
+      for (std::size_t i=0; i<e.size(); ++i) {
+        chargedSums[i] += e[i].numerator;
+        chargedWeights[i] += e[i].pairs;
+        commonChargedSums[i] += e[i].value()*chargedExpected.mixedFour.pairs;
+      }
+    }
     for (std::size_t species = 0; species < 3; ++species) {
       const auto actual = calculateMoments(gfw, correlations, species);
       const auto expected = bruteForce(event, config, species);
@@ -202,7 +235,42 @@ void test_pid_charged_sc(
     near(groupNumerator, sums[i], "subsample numerators");
   }
   near(profiles.validEvents.GetBinContent(1), validEvents, "valid event count");
+  const std::array<TProfile *, 2> chargedP{&chargedProfiles.two, &chargedProfiles.four};
+  const std::array<TProfile *, 2> chargedCP{
+      &commonChargedProfiles.two, &commonChargedProfiles.four};
+  const std::array<TProfile2D *, 2> chargedPG{
+      &chargedProfiles.twoByGroup, &chargedProfiles.fourByGroup};
+  for (std::size_t i=0; i<chargedP.size(); ++i) {
+    near(chargedP[i]->GetBinEntries(1), chargedWeights[i], "charged native weight");
+    near(chargedP[i]->GetBinContent(1), chargedSums[i]/chargedWeights[i], "charged native mean");
+    near(chargedCP[i]->GetBinEntries(1), chargedFourWeightSum, "charged common weight");
+    near(chargedCP[i]->GetBinContent(1), commonChargedSums[i]/chargedFourWeightSum,
+         "charged common mean");
+    double w=0., sum=0.;
+    for (int g=1; g<=2; ++g) {
+      const int b=chargedPG[i]->GetBin(1,g);
+      w+=chargedPG[i]->GetBinEntries(b);
+      sum+=chargedPG[i]->GetBinEntries(b)*chargedPG[i]->GetBinContent(b);
+    }
+    near(w, chargedWeights[i], "charged group weights");
+    near(sum, chargedSums[i], "charged group numerator");
+  }
+  near(chargedProfiles.validEvents.GetBinContent(1), chargedValidEvents, "charged valid events");
+  near(chargedProfiles.sumPairs.GetBinContent(1), chargedWeights[0], "charged pair sum");
+  near(chargedProfiles.sumQuadruplets.GetBinContent(1), chargedWeights[1], "charged four sum");
+  // Charged baseline must remain valid when pion/kaon/proton are absent.
+  Event electrons;
+  for (double eta : {-0.6,0.6}) for (double angle : {0.,0.3})
+    electrons.particles.push_back(track(11,1.,eta,angle));
+  fillGfw(gfw, electrons, config);
+  if (!calculateChargedMoments(gfw, correlations).valid() ||
+      calculateMoments(gfw, correlations, 0).valid())
+    throw std::runtime_error("Charged baseline unexpectedly depends on PID");
   fillGfw(gfw, Event{}, config);
+  const auto emptyCharged = calculateChargedMoments(gfw, correlations);
+  near(emptyCharged.two.pairs, 0., "empty charged pair");
+  near(emptyCharged.four.pairs, 0., "empty charged four");
+  if (emptyCharged.valid()) throw std::runtime_error("Empty charged baseline valid");
   for (std::size_t species = 0; species < 3; ++species) {
     const auto empty = calculateMoments(gfw, correlations, species);
     near(empty.pidTwo.pairs, 0., "empty event clears PID");
@@ -213,5 +281,5 @@ void test_pid_charged_sc(
     }
   }
   std::cout << "Validated GFW against distinct PID/charged tuples for 120 events, "
-               "partial overlap, both multiplicity weight modes and subsamples.\n";
+               "partial overlap, pure charged baseline, both multiplicity weight modes and subsamples.\n";
 }

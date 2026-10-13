@@ -79,6 +79,95 @@ inline Moments calculateMoments(GFW &gfw,
           calculateCorrelation(gfw, manager.MixedFour(species))};
 }
 
+struct ChargedMoments {
+  CorrelationResult two;
+  CorrelationResult four;
+
+  bool valid() const {
+    for (const auto &moment : {two, four}) {
+      if (!(moment.pairs > 0.) || !std::isfinite(moment.pairs) ||
+          !std::isfinite(moment.numerator)) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
+inline ChargedMoments calculateChargedMoments(
+    GFW &gfw, const PidChargedScCorrConfigManager &manager) {
+  return {calculateCorrelation(gfw, manager.ChargedTwo()),
+          calculateCorrelation(gfw, manager.ChargedFour())};
+}
+
+// Independent charged baseline: both moments use events with at least two
+// charged tracks in each eta side. PID availability does not restrict it.
+struct ChargedProfiles {
+  TProfile two;
+  TProfile four;
+  TProfile2D twoByGroup;
+  TProfile2D fourByGroup;
+  TH1D validEvents;
+  TH1D sumPairs;
+  TH1D sumQuadruplets;
+
+  ChargedProfiles(const std::vector<double> &cent,
+                  const std::vector<double> &groups)
+      : two("pTwoCharged", ";Centrality (%);<2>_{charged}",
+            static_cast<int>(cent.size()) - 1, cent.data()),
+        four("pFourCharged", ";Centrality (%);<4>_{charged}",
+             static_cast<int>(cent.size()) - 1, cent.data()),
+        twoByGroup("pTwoChargedByGroup",
+                   ";Centrality (%);Subsample;<2>_{charged}",
+                   static_cast<int>(cent.size()) - 1, cent.data(),
+                   static_cast<int>(groups.size()) - 1, groups.data()),
+        fourByGroup("pFourChargedByGroup",
+                    ";Centrality (%);Subsample;<4>_{charged}",
+                    static_cast<int>(cent.size()) - 1, cent.data(),
+                    static_cast<int>(groups.size()) - 1, groups.data()),
+        validEvents("hValidEvents", ";Centrality (%);Valid events",
+                    static_cast<int>(cent.size()) - 1, cent.data()),
+        sumPairs("hSumChargedPairs", ";Centrality (%);Distinct charged pairs",
+                 static_cast<int>(cent.size()) - 1, cent.data()),
+        sumQuadruplets("hSumChargedQuadruplets",
+                       ";Centrality (%);Distinct charged quadruplets",
+                       static_cast<int>(cent.size()) - 1, cent.data()) {
+    for (TH1 *histogram : std::array<TH1 *, 7>{
+             &two, &four, &twoByGroup, &fourByGroup, &validEvents,
+             &sumPairs, &sumQuadruplets}) {
+      histogram->SetDirectory(nullptr);
+      histogram->Sumw2();
+    }
+  }
+
+  void fill(double centrality, double group, const ChargedMoments &moments,
+            const PidChargedScOutputConfig &settings) {
+    if (!moments.valid()) {
+      return;
+    }
+    const double fourWeight = moments.four.pairs;
+    const double twoWeight = settings.eventWeight == "mixed_quadruplets"
+                                 ? fourWeight : moments.two.pairs;
+    two.Fill(centrality, moments.two.value(), twoWeight);
+    four.Fill(centrality, moments.four.value(), fourWeight);
+    twoByGroup.Fill(centrality, group, moments.two.value(), twoWeight);
+    fourByGroup.Fill(centrality, group, moments.four.value(), fourWeight);
+    validEvents.Fill(centrality);
+    sumPairs.Fill(centrality, moments.two.pairs);
+    sumQuadruplets.Fill(centrality, moments.four.pairs);
+  }
+
+  void write() {
+    two.Write();
+    four.Write();
+    twoByGroup.Write();
+    fourByGroup.Write();
+    validEvents.Write();
+    sumPairs.Write();
+    sumQuadruplets.Write();
+  }
+};
+
 // ROOT profiles preserve weighted sums for merging; nonlinear SC/NSC and
 // bootstrap uncertainties are constructed only after all shards are merged.
 struct Profiles {

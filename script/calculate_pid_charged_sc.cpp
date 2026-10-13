@@ -13,7 +13,8 @@
 #include <string>
 
 // Save the two pure pair moments and the distinct two-PID/two-charged
-// four-track moment needed by SC(v2,PID^2, v2,ch^2). No SC is computed here.
+// four-track moment needed by SC(v2,PID^2, v2,ch^2), and independent pure
+// charged two/four moments for the baseline. SC/NSC are assembled downstream.
 void calculate_pid_charged_sc(
     const char *inputConfigFile = "../config/cent_cfg_ampt.json",
     const char *outputFile = "pid_charged_sc_moments.root",
@@ -33,6 +34,7 @@ void calculate_pid_charged_sc(
     profile = std::make_unique<pid_charged_sc::Profiles>(centralityEdges,
                                                        groupEdges);
   }
+  pid_charged_sc::ChargedProfiles chargedProfiles(centralityEdges, groupEdges);
   TH1D eventCount("hEventCount", ";Selection;Events", 2, 0., 2.);
   eventCount.SetDirectory(nullptr);
   eventCount.GetXaxis()->SetBinLabel(1, "Read");
@@ -57,6 +59,9 @@ void calculate_pid_charged_sc(
         pid_charged_sc::fillGfw(gfw, event, config);
         const double group = sampleAxisCoordinate(
             groupEdges, bootstrapRandomValue(config.randomSeed, identity));
+        chargedProfiles.fill(
+            centrality, group,
+            pid_charged_sc::calculateChargedMoments(gfw, correlations), settings);
         for (std::size_t species = 0; species < profiles.size(); ++species) {
           profiles[species]->fill(
               centrality, group,
@@ -77,6 +82,10 @@ void calculate_pid_charged_sc(
   TNamed("harmonic", "2").Write();
   TNamed("subeventLayout", "A: negative eta; B: positive eta; +2,+2 in A; -2,-2 in B").Write();
   TNamed("eventSample", "Each species: all three moments require a valid mixed quadruplet").Write();
+  TNamed("chargedEventSample",
+         "Independent charged baseline: both moments require a valid charged quadruplet; no PID requirement").Write();
+  TNamed("chargedBaselineDefinition",
+         "A{2 2} B{-2 -2}; distinct charged tracks; downstream SC=M4ch-M2ch^2").Write();
   TNamed("subsampleGroups",
          std::to_string(groupEdges.size() - 1).c_str()).Write();
   // Fixed metadata use TNamed: TParameter would be added during shard merges.
@@ -84,6 +93,8 @@ void calculate_pid_charged_sc(
   nlohmann::json configuration;
   input >> configuration;
   TNamed("analysisConfig", configuration.dump().c_str()).Write();
+  directory->mkdir("Charged")->cd();
+  chargedProfiles.write();
   for (const auto &species : speciesDefinitions()) {
     auto *speciesDirectory = directory->mkdir(species.speciesName);
     speciesDirectory->cd();
