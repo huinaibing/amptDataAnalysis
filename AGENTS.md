@@ -62,7 +62,7 @@ AMPT truth 数据没有 reconstructed `sel8`、detector PID、track-quality、NU
 - `config/cent_cfg.json` 列出 AMPT 输入路径前缀和文件数量；每个分析入口默认读取自己的 `config/<入口函数名>.json`（例如 `config/calculate_v2ptrho.json`），独立管理 flow eta subevent、独立的 mean-pT eta 范围、各粒子 pT 范围、impact-parameter 中心度转换、随机种子、Pure/POI-ref 模式以及对应入口的输出轴。修改某个任务的配置不会影响其他任务；`run_parallel.sh` 和 `submit_condor.sh` 默认按任务名选择配置，仍可显式指定自定义分析 JSON。
 - `v2_pt_rho_output`、`c22_delta_pt_output` 和 `pid_pt_correlations_output` 分别控制三个 pidFlowPtCorr 对应入口的边界策略和输出 axes。其中 `v2_pt_rho_output.axes` 控制 FlowContainer/profile 的分析轴，`v2_pt_rho_output.qa_axes.{centrality,pt,phi,eta}` 单独控制 `hCent/hPt/hPhi/hEta` QA 轴；新增或修改 v2-pT-rho QA 图时必须沿用它，并继续使用现有 uniform/variable `AxisConfig` 格式。`calculate_flowGfwOmegaXi.cpp` 的输出轴按 O2 `flowGfwOmegaXi` 默认值硬编码（charged pT 38 bins、V0/级联 pT 14 bins、中心度 10 bins、mass bins 等），以保持与 O2 输出结构完全一致；修改 O2 默认 binning 时必须同步修改该脚本。修改 binning 时要保证其 O2 对应输出及 downstream 脚本仍兼容。
 - 本分支将所需 O2Physics 类保存在 `external/o2physics/`。入口宏应从 `script/` 目录在普通 ROOT 6（支持 C++17）环境中直接运行，不要编译，也不要同时加载 O2Physics 中的同名类。
-- Condor 提交参数放在 `config/condor/submit.conf`，由 `script/submit_condor.sh` 默认读取；也可用 `submit_condor.sh <配置路径>` 选择另一份提交配置。配置沿用 Bash 变量格式，使用脚本提供的 `REPO_DIR` 和 `SCRIPT_DIR` 定位文件。修改提交参数时编辑配置文件。
+- Condor 提交参数放在 `config/condor/submit_<任务名>_ampt.conf` 和 `submit_<任务名>_hydro.conf`，用 `submit_condor.sh <配置路径>` 显式选择；`submit_ampt.conf` 和 `submit_hydro.conf` 保留为 v2-pT-rho 的简写配置，不提供默认 `submit.conf`。配置沿用 Bash 变量格式，使用脚本提供的 `REPO_DIR` 和 `SCRIPT_DIR` 定位文件。修改提交参数时编辑配置文件。
 
 ```bash
 cd /home/huinaibing/git_repo/amptDataAnalysis/script

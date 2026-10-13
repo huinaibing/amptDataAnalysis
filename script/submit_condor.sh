@@ -5,8 +5,8 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 REPO_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
 
 die() { echo "错误：$*" >&2; exit 1; }
-(( $# <= 1 )) || die "用法：$0 [提交配置文件]；默认读取 config/condor/submit.conf。"
-SUBMIT_CONFIG=${1:-$REPO_DIR/config/condor/submit.conf}
+(( $# == 1 )) || die "用法：$0 <提交配置文件>；请选择 config/condor/ 下的 AMPT 或 hydro 配置。"
+SUBMIT_CONFIG=$1
 [[ -f $SUBMIT_CONFIG && -r $SUBMIT_CONFIG ]] || die "找不到或无法读取提交配置：$SUBMIT_CONFIG"
 # 配置沿用 Bash 变量格式，可以使用上面定义的 REPO_DIR 和 SCRIPT_DIR。
 source "$SUBMIT_CONFIG"
