@@ -1,6 +1,7 @@
 # submit_condor.sh generates analysis.dag with the variables used below.
 # Each DAG node runs one ROOT process, including the final merge node.
 universe = vanilla
+priority = 100
 executable = condor_worker.sh
 arguments = "$(mode) $(shard) $(result) $(expected) $(eos_output)"
 

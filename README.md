@@ -159,7 +159,7 @@ must expose the same `particles` tree and branches expected by `dataLoader.h`.
 
 `ROOT_SETUP` selects a fixed ordinary ROOT environment available to the
 workers; the default is the CERN CVMFS LCG_108 EL9/gcc13 view (ROOT 6.36.02).
-`run.sub` selects EL9/x86_64 workers and uses `JobFlavour = "longlunch"`
+`run.sub` sets `priority = 100`, selects EL9/x86_64 workers and uses `JobFlavour = "longlunch"`
 (2 hours), with no explicit CPU or memory request. Both analysis and
 merge use this submit description. Increase `SHARD_COUNT` if an analysis
 shard exceeds the queue's time limit. The merge must also finish
