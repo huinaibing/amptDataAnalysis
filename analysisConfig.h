@@ -68,6 +68,9 @@ struct PidChargedScOutputConfig {
   // "mixed_quadruplets": all three moments use the mixed four-track count.
   // Both choices use multiplicity weights; neither uses unit event weights.
   std::string eventWeight = "combinations";
+  // Variance components have their own common sample of valid gap pairs and
+  // full-eta same-species quadruplets; never use a mixed-species denominator.
+  std::string flowVarianceEventWeight = "combinations";
   AxisConfig centralityAxis{AxisBinning::Uniform, 90, 0., 90., {}};
   AxisConfig bootstrapAxis{AxisBinning::Uniform, 30, 0., 30., {}};
 };
@@ -371,6 +374,13 @@ readPidChargedScOutputConfig(const nlohmann::json &document,
       result.eventWeight != "mixed_quadruplets") {
     throw std::runtime_error(name +
                              ": event_weight must be combinations or mixed_quadruplets");
+  }
+  result.flowVarianceEventWeight =
+      document.value("flow_variance_event_weight", std::string("combinations"));
+  if (result.flowVarianceEventWeight != "combinations" &&
+      result.flowVarianceEventWeight != "full_quadruplets") {
+    throw std::runtime_error(name +
+        ": flow_variance_event_weight must be combinations or full_quadruplets");
   }
   result.centralityAxis =
       readAxisConfig(axes.at("centrality"), name + ".axes.centrality");

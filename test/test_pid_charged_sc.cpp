@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -100,6 +101,45 @@ ampt_analysis::pid_charged_sc::Moments bruteForce(
   return result;
 }
 
+ampt_analysis::pid_charged_sc::ChargedMoments bruteForceFull(
+    const Event &event, const ampt_analysis::AnalysisConfig &config,
+    std::size_t species) {
+  using namespace ampt_analysis;
+  const auto &settings = config.pidChargedScOutput;
+  std::vector<std::size_t> selected;
+  for (std::size_t i = 0; i < event.particles.size(); ++i) {
+    const auto &p = event.particles[i];
+    const double pt = p.GetPt(), eta = p.GetEta();
+    if (!std::isfinite(pt) || !std::isfinite(eta) ||
+        !std::isfinite(p.GetPhi()) || !isChargedPdg(p.pdgPid) ||
+        (settings.strictEtaBounds ? std::abs(eta) >= settings.etaMax
+                                  : std::abs(eta) > settings.etaMax)) {
+      continue;
+    }
+    const bool charged = species == 3;
+    if ((!charged && std::abs(p.pdgPid) != speciesDefinitions().at(species).absPdg) ||
+        !(charged ? config.chargedPt : ptRangeForPdg(std::abs(p.pdgPid), config))
+             .contains(pt, settings.strictPtBounds)) {
+      continue;
+    }
+    selected.push_back(i);
+  }
+  pid_charged_sc::ChargedMoments result;
+  const auto phi = [&](std::size_t i) { return event.particles[i].GetPhi(); };
+  for (auto a : selected) for (auto b : selected) {
+    if (a == b) continue;
+    result.two.numerator += std::cos(2. * (phi(a) - phi(b)));
+    ++result.two.pairs;
+    for (auto c : selected) for (auto d : selected) {
+      if (c == a || c == b || d == a || d == b || c == d) continue;
+      result.four.numerator +=
+          std::cos(2. * (phi(a) + phi(b) - phi(c) - phi(d)));
+      ++result.four.pairs;
+    }
+  }
+  return result;
+}
+
 } // namespace ampt_pid_charged_sc_test
 
 void test_pid_charged_sc(
@@ -125,6 +165,15 @@ void test_pid_charged_sc(
   Profiles profiles(cent, groups);
   Profiles commonProfiles(cent, groups);
   ChargedProfiles chargedProfiles(cent, groups), commonChargedProfiles(cent, groups);
+  std::array<std::unique_ptr<FlowVarianceProfiles>, 4> variance, commonVariance;
+  for (std::size_t s = 0; s < variance.size(); ++s) {
+    variance[s] = std::make_unique<FlowVarianceProfiles>(cent, groups);
+    commonVariance[s] = std::make_unique<FlowVarianceProfiles>(cent, groups);
+  }
+  std::array<std::array<double, 3>, 4> varianceSums{}, varianceWeights{},
+      commonVarianceSums{};
+  std::array<double, 4> varianceFourWeights{};
+  std::array<int, 4> varianceEvents{};
   std::array<double, 2> chargedSums{}, chargedWeights{}, commonChargedSums{};
   double chargedFourWeightSum = 0.;
   int chargedValidEvents = 0;
@@ -152,8 +201,47 @@ void test_pid_charged_sc(
       event.particles = {track(211, 1., -0.4, 0.), track(-211, 1., -0.8, 0.),
                          track(211, 1., 0.4, 0.), track(-211, 1., 0.8, 0.),
                          track(211, 1., 0., 0.)};
+    } else if (sample == 8) {
+      event.particles.clear();
+      for (int pdg : {211, 321, 2212}) {
+        for (double eta : {-0.6, -0.1, 0., 0.6}) {
+          event.particles.push_back(track(pdg, 0.8, eta, phi(engine)));
+        }
+      }
     }
     fillGfw(gfw, event, config);
+    for (std::size_t s = 0; s < variance.size(); ++s) {
+      const auto gap = bruteForce(event, config, s).pidTwo;
+      const auto full = bruteForceFull(event, config, s);
+      const auto actual = calculateFlowVarianceMoments(
+          gfw, correlations,
+          calculateCorrelation(gfw, s == 3 ? correlations.ChargedTwo()
+                                           : correlations.PidTwo(s)), s);
+      const FlowVarianceMoments expected{gap, full.two, full.four};
+      const std::array<CorrelationResult, 3> a{
+          actual.gapTwo, actual.fullTwo, actual.fullFour};
+      const std::array<CorrelationResult, 3> e{gap, full.two, full.four};
+      for (std::size_t i = 0; i < e.size(); ++i) {
+        const std::string label = "variance sample " + std::to_string(sample) +
+            " species " + std::to_string(s) + " moment " + std::to_string(i);
+        near(a[i].pairs, e[i].pairs, label + " count");
+        near(a[i].numerator, e[i].numerator, label + " numerator");
+      }
+      const double group = sampleAxisCoordinate(groups, (sample + 0.5) / 120.);
+      config.pidChargedScOutput.flowVarianceEventWeight = "combinations";
+      variance[s]->fill(10., group, actual, config.pidChargedScOutput);
+      config.pidChargedScOutput.flowVarianceEventWeight = "full_quadruplets";
+      commonVariance[s]->fill(10., group, actual, config.pidChargedScOutput);
+      if (expected.valid()) {
+        ++varianceEvents[s];
+        varianceFourWeights[s] += full.four.pairs;
+        for (std::size_t i = 0; i < e.size(); ++i) {
+          varianceSums[s][i] += e[i].numerator;
+          varianceWeights[s][i] += e[i].pairs;
+          commonVarianceSums[s][i] += e[i].value() * full.four.pairs;
+        }
+      }
+    }
     const auto chargedActual = calculateChargedMoments(gfw, correlations);
     const auto chargedExpected = bruteForce(event, config, 3);
     near(chargedActual.two.numerator, chargedExpected.chargedTwo.numerator,
@@ -259,6 +347,54 @@ void test_pid_charged_sc(
   near(chargedProfiles.validEvents.GetBinContent(1), chargedValidEvents, "charged valid events");
   near(chargedProfiles.sumPairs.GetBinContent(1), chargedWeights[0], "charged pair sum");
   near(chargedProfiles.sumQuadruplets.GetBinContent(1), chargedWeights[1], "charged four sum");
+  for (std::size_t s = 0; s < variance.size(); ++s) {
+    const std::array<TProfile *, 3> p{
+        &variance[s]->gapTwo, &variance[s]->fullTwo, &variance[s]->fullFour};
+    const std::array<TProfile *, 3> cp{
+        &commonVariance[s]->gapTwo, &commonVariance[s]->fullTwo,
+        &commonVariance[s]->fullFour};
+    const std::array<TProfile2D *, 3> pg{
+        &variance[s]->gapTwoByGroup, &variance[s]->fullTwoByGroup,
+        &variance[s]->fullFourByGroup};
+    if (varianceEvents[s] == 0) throw std::runtime_error("No variance test events");
+    near(variance[s]->validEvents.GetBinContent(1), varianceEvents[s],
+         "variance valid events");
+    for (std::size_t i = 0; i < p.size(); ++i) {
+      near(p[i]->GetBinEntries(1), varianceWeights[s][i], "variance weight");
+      near(p[i]->GetBinContent(1), varianceSums[s][i] / varianceWeights[s][i],
+           "variance mean");
+      near(cp[i]->GetBinEntries(1), varianceFourWeights[s], "variance common weight");
+      near(cp[i]->GetBinContent(1), commonVarianceSums[s][i] / varianceFourWeights[s],
+           "variance common mean");
+      double sum = 0., weight = 0.;
+      for (int g = 1; g <= 2; ++g) {
+        const int bin = pg[i]->GetBin(1, g);
+        weight += pg[i]->GetBinEntries(bin);
+        sum += pg[i]->GetBinEntries(bin) * pg[i]->GetBinContent(bin);
+      }
+      near(weight, varianceWeights[s][i], "variance group weights");
+      near(sum, varianceSums[s][i], "variance group numerator");
+    }
+  }
+  // Full-only tracks must be included even at eta=0; their absence from the
+  // gap makes the matched variance triplet invalid, not the full correlator.
+  Event centralOnly;
+  for (double eta : {-0.2, 0., 0.1, 0.2})
+    centralOnly.particles.push_back(track(211, 1., eta, 0.));
+  fillGfw(gfw, centralOnly, config);
+  near(calculateCorrelation(gfw, correlations.FullTwo(0)).pairs, 12., "central full pairs");
+  near(calculateCorrelation(gfw, correlations.FullFour(0)).pairs, 24., "central full fours");
+  near(calculateMoments(gfw, correlations, 0).pidTwo.pairs, 0., "central gap empty");
+  Event lowPid;
+  for (double eta : {-0.6, 0.6}) {
+    lowPid.particles.push_back(track(211, 1., eta, 0.));
+    lowPid.particles.push_back(track(11, 1., eta, 0.));
+  }
+  fillGfw(gfw, lowPid, config);
+  const auto lowPidSc = calculateMoments(gfw, correlations, 0);
+  if (!lowPidSc.valid() ||
+      calculateFlowVarianceMoments(gfw, correlations, lowPidSc.pidTwo, 0).valid())
+    throw std::runtime_error("Four-POI variance cut changed the SC sample");
   // Charged baseline must remain valid when pion/kaon/proton are absent.
   Event electrons;
   for (double eta : {-0.6,0.6}) for (double angle : {0.,0.3})
@@ -281,6 +417,11 @@ void test_pid_charged_sc(
       throw std::runtime_error("Empty event unexpectedly valid");
     }
   }
+  for (std::size_t s = 0; s < variance.size(); ++s) {
+    near(calculateCorrelation(gfw, correlations.FullTwo(s)).pairs, 0., "empty full pairs");
+    near(calculateCorrelation(gfw, correlations.FullFour(s)).pairs, 0., "empty full fours");
+  }
   std::cout << "Validated GFW against distinct PID/charged tuples for 120 events, "
-               "partial overlap, pure charged baseline, both multiplicity weight modes and subsamples.\n";
+               "partial overlap, pure charged baseline, four-species full-eta variance "
+               "components, multiplicity weight modes and subsamples.\n";
 }

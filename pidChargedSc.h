@@ -23,27 +23,35 @@ inline void fillGfw(GFW &gfw, const Event &event,
     const double eta = track.GetEta();
     const double phi = track.GetPhi();
     if (!std::isfinite(pt) || !std::isfinite(eta) || !std::isfinite(phi) ||
-        eta == 0. || !isChargedPdg(track.pdgPid)) {
+        !isChargedPdg(track.pdgPid)) {
       continue;
     }
     const double absEta = std::abs(eta);
-    const bool acceptedEta = settings.strictEtaBounds
-                                 ? absEta > settings.innerAbsEta &&
-                                       absEta < settings.etaMax
-                                 : absEta >= settings.innerAbsEta &&
-                                       absEta <= settings.etaMax;
-    if (!acceptedEta) {
+    const bool acceptedFullEta = settings.strictEtaBounds
+                                    ? absEta < settings.etaMax
+                                    : absEta <= settings.etaMax;
+    if (!acceptedFullEta) {
       continue;
     }
+    const bool acceptedGapEta = eta != 0. &&
+        (settings.strictEtaBounds ? absEta > settings.innerAbsEta
+                                  : absEta >= settings.innerAbsEta);
     const bool charged = config.chargedPt.contains(pt, settings.strictPtBounds);
-    int mask = charged ? Mask::kRef : 0;
+    int mask = charged ? PidChargedScCorrConfigManager::kFullChargedMask : 0;
+    if (charged && acceptedGapEta) {
+      mask |= Mask::kRef;
+    }
     const int absPdg = std::abs(track.pdgPid);
     const auto *species = findSpecies(absPdg);
     if (species && ptRangeForPdg(absPdg, config).contains(
                        pt, settings.strictPtBounds)) {
-      mask |= species->mask;
-      if (charged) {
-        mask |= species->overlapMask;
+      mask |= PidChargedScCorrConfigManager::kFullPidMasks.at(
+          static_cast<std::size_t>(species->species));
+      if (acceptedGapEta) {
+        mask |= species->mask;
+        if (charged) {
+          mask |= species->overlapMask;
+        }
       }
     }
     if (mask != 0) {
@@ -99,6 +107,99 @@ inline ChargedMoments calculateChargedMoments(
   return {calculateCorrelation(gfw, manager.ChargedTwo()),
           calculateCorrelation(gfw, manager.ChargedFour())};
 }
+
+struct FlowVarianceMoments {
+  CorrelationResult gapTwo;
+  CorrelationResult fullTwo;
+  CorrelationResult fullFour;
+
+  bool valid() const {
+    for (const auto &moment : {gapTwo, fullTwo, fullFour}) {
+      if (!(moment.pairs > 0.) || !std::isfinite(moment.pairs) ||
+          !std::isfinite(moment.numerator)) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
+inline FlowVarianceMoments calculateFlowVarianceMoments(
+    GFW &gfw, const PidChargedScCorrConfigManager &manager,
+    const CorrelationResult &gapTwo, std::size_t species) {
+  return {gapTwo, calculateCorrelation(gfw, manager.FullTwo(species)),
+          calculateCorrelation(gfw, manager.FullFour(species))};
+}
+
+// A separate copy of the existing gap correlator keeps all three variance
+// ingredients on one species-specific event sample, without imposing a
+// four-POI requirement on the existing SC profiles. Store raw <4>, not c2{4}.
+struct FlowVarianceProfiles {
+  TProfile gapTwo;
+  TProfile fullTwo;
+  TProfile fullFour;
+  TProfile2D gapTwoByGroup;
+  TProfile2D fullTwoByGroup;
+  TProfile2D fullFourByGroup;
+  TH1D validEvents;
+
+  FlowVarianceProfiles(const std::vector<double> &cent,
+                       const std::vector<double> &groups)
+      : gapTwo("pTwoGapForVariance", ";Centrality (%);<2>_{gap}",
+               static_cast<int>(cent.size()) - 1, cent.data()),
+        fullTwo("pTwoFull", ";Centrality (%);<2>_{full}",
+                static_cast<int>(cent.size()) - 1, cent.data()),
+        fullFour("pFourFull", ";Centrality (%);<4>_{full}",
+                 static_cast<int>(cent.size()) - 1, cent.data()),
+        gapTwoByGroup("pTwoGapForVarianceByGroup",
+                      ";Centrality (%);Subsample;<2>_{gap}",
+                      static_cast<int>(cent.size()) - 1, cent.data(),
+                      static_cast<int>(groups.size()) - 1, groups.data()),
+        fullTwoByGroup("pTwoFullByGroup", ";Centrality (%);Subsample;<2>_{full}",
+                       static_cast<int>(cent.size()) - 1, cent.data(),
+                       static_cast<int>(groups.size()) - 1, groups.data()),
+        fullFourByGroup("pFourFullByGroup", ";Centrality (%);Subsample;<4>_{full}",
+                        static_cast<int>(cent.size()) - 1, cent.data(),
+                        static_cast<int>(groups.size()) - 1, groups.data()),
+        validEvents("hFlowVarianceValidEvents", ";Centrality (%);Valid events",
+                    static_cast<int>(cent.size()) - 1, cent.data()) {
+    for (TH1 *histogram : std::array<TH1 *, 7>{
+             &gapTwo, &fullTwo, &fullFour, &gapTwoByGroup, &fullTwoByGroup,
+             &fullFourByGroup, &validEvents}) {
+      histogram->SetDirectory(nullptr);
+      histogram->Sumw2();
+    }
+  }
+
+  void fill(double centrality, double group, const FlowVarianceMoments &moments,
+            const PidChargedScOutputConfig &settings) {
+    if (!moments.valid()) {
+      return;
+    }
+    const std::array<CorrelationResult, 3> values{
+        moments.gapTwo, moments.fullTwo, moments.fullFour};
+    const std::array<TProfile *, 3> nominal{&gapTwo, &fullTwo, &fullFour};
+    const std::array<TProfile2D *, 3> grouped{
+        &gapTwoByGroup, &fullTwoByGroup, &fullFourByGroup};
+    for (std::size_t i = 0; i < values.size(); ++i) {
+      const double weight = settings.flowVarianceEventWeight == "full_quadruplets"
+                                ? moments.fullFour.pairs : values[i].pairs;
+      nominal[i]->Fill(centrality, values[i].value(), weight);
+      grouped[i]->Fill(centrality, group, values[i].value(), weight);
+    }
+    validEvents.Fill(centrality);
+  }
+
+  void write() {
+    gapTwo.Write();
+    fullTwo.Write();
+    fullFour.Write();
+    gapTwoByGroup.Write();
+    fullTwoByGroup.Write();
+    fullFourByGroup.Write();
+    validEvents.Write();
+  }
+};
 
 // Independent charged baseline: both moments use events with at least two
 // charged tracks in each eta side. PID availability does not restrict it.

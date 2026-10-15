@@ -39,6 +39,7 @@
             "eta_max": 0.8
         },
         "event_weight": "combinations",
+        "flow_variance_event_weight": "combinations",
         "axes": {
             "centrality": {
                 "binning": "uniform",

@@ -87,10 +87,11 @@ if ! root -n -l -b -q "$merge_call"; then
     exit 1
 fi
 if [[ $macro == calculate_pid_charged_sc ]]; then
-    # Reject stale/partial results that cannot supply the charged baseline.
-    check_call=$(printf '{ TFile f("%s", "READ"); auto d=f.GetDirectory("pid-charged-sc/Charged"); gSystem->Exit(f.IsZombie() || !d || !d->Get("pTwoCharged") || !d->Get("pFourCharged") || !d->Get("pTwoChargedByGroup") || !d->Get("pFourChargedByGroup") ? 1 : 0); }' "$output_arg")
+    # Verify the baseline and all mergeable variance components, including
+    # the matched-sample gap correlator and the common subsample groups.
+    check_call=$(printf '{ TFile f("%s", "READ"); bool ok=!f.IsZombie(); for (const char* s : {"Charged","Pion","Kaon","Proton"}) { auto d=f.GetDirectory((std::string("pid-charged-sc/")+s).c_str()); for (const char* n : {"pTwoGapForVariance","pTwoFull","pFourFull","pTwoGapForVarianceByGroup","pTwoFullByGroup","pFourFullByGroup","hFlowVarianceValidEvents"}) { if (!d || !d->Get(n)) ok=false; } } auto d=f.GetDirectory("pid-charged-sc/Charged"); for (const char* n : {"pTwoCharged","pFourCharged","pTwoChargedByGroup","pFourChargedByGroup"}) { if (!d || !d->Get(n)) ok=false; } gSystem->Exit(ok ? 0 : 1); }' "$output_arg")
     if ! root -n -l -b -q -e "$check_call"; then
-        echo "Missing charged SC baseline components; logs and partial files are in $part_dir" >&2
+        echo "Missing SC baseline or flow variance components; logs and partial files are in $part_dir" >&2
         exit 1
     fi
 fi

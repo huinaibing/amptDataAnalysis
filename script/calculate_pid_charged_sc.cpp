@@ -14,7 +14,9 @@
 
 // Save the two pure pair moments and the distinct two-PID/two-charged
 // four-track moment needed by SC(v2,PID^2, v2,ch^2), and independent pure
-// charged two/four moments for the baseline. SC/NSC are assembled downstream.
+// charged two/four moments for the baseline. Also save pure full-eta <2>, <4>
+// and a matched-sample gap <2> for flow variance, for all four species.
+// SC/NSC and var(v2^2) are assembled downstream after merging.
 void calculate_pid_charged_sc(
     const char *inputConfigFile = "../config/cent_cfg_ampt.json",
     const char *outputFile = "pid_charged_sc_moments.root",
@@ -36,6 +38,12 @@ void calculate_pid_charged_sc(
                                                        groupEdges);
   }
   pid_charged_sc::ChargedProfiles chargedProfiles(centralityEdges, groupEdges);
+  std::array<std::unique_ptr<pid_charged_sc::FlowVarianceProfiles>, 4>
+      varianceProfiles;
+  for (auto &profile : varianceProfiles) {
+    profile = std::make_unique<pid_charged_sc::FlowVarianceProfiles>(
+        centralityEdges, groupEdges);
+  }
   TH1D eventCount("hEventCount", ";Selection;Events", 2, 0., 2.);
   eventCount.SetDirectory(nullptr);
   eventCount.GetXaxis()->SetBinLabel(1, "Read");
@@ -60,13 +68,22 @@ void calculate_pid_charged_sc(
         pid_charged_sc::fillGfw(gfw, event, config);
         const double group = sampleAxisCoordinate(
             groupEdges, bootstrapRandomValue(config.randomSeed, identity));
-        chargedProfiles.fill(
+        const auto chargedMoments =
+            pid_charged_sc::calculateChargedMoments(gfw, correlations);
+        chargedProfiles.fill(centrality, group, chargedMoments, settings);
+        varianceProfiles[PidChargedScCorrConfigManager::kChargedSpecies]->fill(
             centrality, group,
-            pid_charged_sc::calculateChargedMoments(gfw, correlations), settings);
+            pid_charged_sc::calculateFlowVarianceMoments(
+                gfw, correlations, chargedMoments.two,
+                PidChargedScCorrConfigManager::kChargedSpecies), settings);
         for (std::size_t species = 0; species < profiles.size(); ++species) {
-          profiles[species]->fill(
+          const auto moments =
+              pid_charged_sc::calculateMoments(gfw, correlations, species);
+          profiles[species]->fill(centrality, group, moments, settings);
+          varianceProfiles[species]->fill(
               centrality, group,
-              pid_charged_sc::calculateMoments(gfw, correlations, species), settings);
+              pid_charged_sc::calculateFlowVarianceMoments(
+                  gfw, correlations, moments.pidTwo, species), settings);
         }
       });
 
@@ -87,6 +104,14 @@ void calculate_pid_charged_sc(
          "Independent charged baseline: both moments require a valid charged quadruplet; no PID requirement").Write();
   TNamed("chargedBaselineDefinition",
          "A{2 2} B{-2 -2}; distinct charged tracks; downstream SC=M4ch-M2ch^2").Write();
+  TNamed("flowVarianceDefinition",
+         "Downstream: pFourFull - 2*pTwoFull^2 + pTwoGapForVariance^2; pFourFull is raw <4>, not c2{4}").Write();
+  TNamed("flowVarianceCorrelators",
+         "Same species only: full{2 -2}, full{2 2 -2 -2}; full eta=(-eta_max,+eta_max), no inner gap; GFW removes self-correlations").Write();
+  TNamed("flowVarianceEventSample",
+         "Each species independently: all three variance moments require a valid same-species full quadruplet and gap pair; independent of mixed SC validity").Write();
+  TNamed("flowVarianceEventWeight",
+         settings.flowVarianceEventWeight.c_str()).Write();
   TNamed("subsampleGroups",
          std::to_string(groupEdges.size() - 1).c_str()).Write();
   // Fixed metadata use TNamed: TParameter would be added during shard merges.
@@ -96,10 +121,12 @@ void calculate_pid_charged_sc(
   TNamed("analysisConfig", configuration.dump().c_str()).Write();
   directory->mkdir("Charged")->cd();
   chargedProfiles.write();
+  varianceProfiles[PidChargedScCorrConfigManager::kChargedSpecies]->write();
   for (const auto &species : speciesDefinitions()) {
     auto *speciesDirectory = directory->mkdir(species.speciesName);
     speciesDirectory->cd();
     profiles[static_cast<std::size_t>(species.species)]->write();
+    varianceProfiles[static_cast<std::size_t>(species.species)]->write();
   }
   output.Close();
   std::cout << "Processed " << processedEvents << " AMPT events; wrote "

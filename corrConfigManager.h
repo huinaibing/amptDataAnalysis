@@ -355,6 +355,13 @@ private:
 // the overlap contraction independently on each side.
 class PidChargedScCorrConfigManager {
 public:
+  // Full-eta storage has separate bits so tracks inside the gap (including
+  // eta=0) never leak into the existing subevent correlators.
+  static constexpr std::size_t kChargedSpecies = 3;
+  static constexpr int kFullChargedMask = 1 << 7;
+  static constexpr std::array<int, 3> kFullPidMasks{
+      1 << 8, 1 << 9, 1 << 10};
+
   explicit PidChargedScCorrConfigManager(GFW &gfw, double etaGap,
                                         double etaMax) {
     if (!std::isfinite(etaGap) || !std::isfinite(etaMax) || etaGap < 0. ||
@@ -372,6 +379,11 @@ public:
                     std::nextafter(etaMax, infinity), 1, mask);
     };
     addSides("scRef", Mask::kRef);
+    const auto addFull = [&](const std::string &name, int mask) {
+      gfw.AddRegion(name, std::nextafter(-etaMax, -infinity),
+                    std::nextafter(etaMax, infinity), 1, mask);
+    };
+    addFull("scRefFull", kFullChargedMask);
     const std::array<const char *, 3> names{"Pi", "Ka", "Pr"};
     const std::array<int, 3> masks{Mask::kPion, Mask::kKaon, Mask::kProton};
     const std::array<int, 3> overlapMasks{
@@ -379,11 +391,17 @@ public:
     for (std::size_t species = 0; species < names.size(); ++species) {
       addSides(std::string("scPoi") + names[species], masks[species]);
       addSides(std::string("scOl") + names[species], overlapMasks[species]);
+      addFull(std::string("scPoi") + names[species] + "Full",
+              kFullPidMasks[species]);
     }
     mChargedTwo = gfw.GetCorrelatorConfig(
         "scRefA {2} scRefB {-2}", "ScChargedTwo", false);
     mChargedFour = gfw.GetCorrelatorConfig(
         "scRefA {2 2} scRefB {-2 -2}", "ScChargedFour", false);
+    mFullTwo[kChargedSpecies] = gfw.GetCorrelatorConfig(
+        "scRefFull {2 -2}", "ScChargedFullTwo", false);
+    mFullFour[kChargedSpecies] = gfw.GetCorrelatorConfig(
+        "scRefFull {2 2 -2 -2}", "ScChargedFullFour", false);
     for (std::size_t species = 0; species < names.size(); ++species) {
       const std::string poi = std::string("scPoi") + names[species];
       const std::string overlap = std::string("scOl") + names[species];
@@ -394,9 +412,15 @@ public:
           poi + "A scRefA | " + overlap + "A {2 2} " +
               poi + "B scRefB | " + overlap + "B {-2 -2}",
           std::string("Sc") + names[species] + "ChargedFour", false);
+      mFullTwo[species] = gfw.GetCorrelatorConfig(
+          poi + "Full {2 -2}",
+          std::string("Sc") + names[species] + "FullTwo", false);
+      mFullFour[species] = gfw.GetCorrelatorConfig(
+          poi + "Full {2 2 -2 -2}",
+          std::string("Sc") + names[species] + "FullFour", false);
     }
     // Derive all required harmonics and weight powers from the configs.
-    if (gfw.CreateRegions() != 14) {
+    if (gfw.CreateRegions() != 18) {
       throw std::runtime_error("Failed to create PID-charged SC GFW regions");
     }
   }
@@ -409,12 +433,21 @@ public:
   const GFW::CorrConfig &MixedFour(std::size_t species) const {
     return mMixedFour.at(species);
   }
+  const GFW::CorrConfig &FullTwo(std::size_t species) const {
+    return mFullTwo.at(species);
+  }
+  const GFW::CorrConfig &FullFour(std::size_t species) const {
+    return mFullFour.at(species);
+  }
 
 private:
   GFW::CorrConfig mChargedTwo;
   GFW::CorrConfig mChargedFour;
   std::array<GFW::CorrConfig, 3> mPidTwo;
   std::array<GFW::CorrConfig, 3> mMixedFour;
+  // Pion, kaon, proton, charged; full correlators use only that species.
+  std::array<GFW::CorrConfig, 4> mFullTwo;
+  std::array<GFW::CorrConfig, 4> mFullFour;
 };
 
 #endif // AMPT_DATA_ANALYSIS_CORR_CONFIG_MANAGER_H
