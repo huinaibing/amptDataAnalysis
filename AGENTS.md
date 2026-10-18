@@ -8,9 +8,12 @@
 - 该目录之外的文件通常是头文件或配置文件；除非用户明确要求，不要把主函数放到那里，也不要随意改变这些文件的职责。
 - `analysisConfig.h` 负责配置读取和 PID/output metadata，`analysisUtils.h` 负责共享选择、中心度转换、GFW 填充和输入迭代，`corrConfigManager.h` 维护与 O2 GFW 对应的 region 和 correlation，`dataLoader.h`/`eventManager.h` 负责流式读取和按事件分组，`utils.h` 提供 FlowContainer 和 v2-pT-rho 填充工具。公共逻辑应留在这些头文件中，四个主入口只负责各自 workflow 的编排和输出。
 
-## 与 O2 任务的接口契约
+## 与 O2 任务的对应关系与同步范围
 
-`script/` 下的 ROOT 入口宏分别对应 O2 主函数：`pidFlowPtCorr.cxx` 的三个主要数据入口对应 `calculate_v2ptrho.cpp`、`calculate_c22deltapt.cpp`、`calculate_pidptcorrelations.cpp`，`flowGfwOmegaXi.cxx` 的 `processData` 对应 `calculate_flowGfwOmegaXi.cpp`。这些入口使用相同的分析量定义，并把结果写成 O2/AnalysisResults-compatible 的 ROOT 结构。pidFlowPtCorr 对应输出的顶层任务目录统一为 `pid-flow-pt-corr`；flowGfwOmegaXi 对应输出的顶层任务目录为 `flow-gfw-omega-xi`。对应范围内的子目录、FlowContainer 名、profile/histogram 名、轴含义和 bootstrap 组织方式必须与 O2 主函数保持一致。同一个 downstream ROOT 后处理脚本应能按相同路径读取 O2 数据结果和 AMPT 结果。
+- 只有用户明确要求同步时，才同步修改 AMPT 和 O2 代码。修改一方不自动修改另一方，也不要仅为保持接口一致而增加另一项目的改动。
+- 以下对应关系描述已有实现；未要求同步时，允许两边保留各自的组件与输出结构，后处理以本次指定的输入接口为准。
+
+`script/` 下的 ROOT 入口宏分别对应 O2 主函数：`pidFlowPtCorr.cxx` 的三个主要数据入口对应 `calculate_v2ptrho.cpp`、`calculate_c22deltapt.cpp`、`calculate_pidptcorrelations.cpp`，`flowGfwOmegaXi.cxx` 的 `processData` 对应 `calculate_flowGfwOmegaXi.cpp`。这些入口使用相同的分析量定义，并把结果写成 O2/AnalysisResults-compatible 的 ROOT 结构。pidFlowPtCorr 对应输出的顶层任务目录统一为 `pid-flow-pt-corr`；flowGfwOmegaXi 对应输出的顶层任务目录为 `flow-gfw-omega-xi`。在用户明确要求同步的范围内，核对子目录、FlowContainer 名、profile/histogram 名、轴含义和 bootstrap 组织方式，使同步后的共同输出可由同一个 downstream ROOT 后处理脚本按相同路径读取。
 
 | AMPT 入口脚本和函数 | 对应的 O2 主函数 | 对应输出 |
 | --- | --- | --- |
@@ -19,7 +22,7 @@
 | `script/calculate_pidptcorrelations.cpp` / `calculate_pidptcorrelations(...)` | `processPidPtCorrelations(...)` | `pid-flow-pt-corr/FlowContainerPidPtCorr` 和 `pid-flow-pt-corr/hEventCount/processPidPtCorrelations` |
 | `script/calculate_flowGfwOmegaXi.cpp` / `calculate_flowGfwOmegaXi(...)` | `processData(...)` | `flow-gfw-omega-xi` 下的 charged flow 基础图（`hPhi/hEta/hPt/hCent/hMult` 等）、`c22/c24/c32/c22Full` 及 charged dpt profiles、Xi/Omega/K0s/Lambda 的 dpt profiles 与不变质量谱 |
 
-修改 O2 主函数的结果对象名、目录、profile 列表、轴顺序、中心度 bin 或 bootstrap 定义时，要检查并同步修改对应的 AMPT 入口；修改 AMPT 输出时也要反向核对 O2 主函数。不要在两边为同一个物理量创建不同名字，也不要让 downstream 脚本通过 AMPT/O2 文件名分支来兼容本可保持一致的结构。
+只有用户明确要求同步时，才核对并同步 AMPT 与 O2 的相关结果对象名、目录、profile 列表、轴顺序、中心度 bin 和 bootstrap 定义；否则只修改本次指定的项目。明确同步的同一物理量应优先沿用共同命名，后处理按实际对象结构读取，避免按输入文件名判断来源。
 
 AMPT truth 数据没有 reconstructed `sel8`、detector PID、track-quality、NUA/NUE 和 CCDB 校正。AMPT 入口使用 PDG code 区分带电粒子/粒子种类，以单位粒子权重填充，并通过 impact parameter 转换中心度；`calculate_flowGfwOmegaXi.cpp` 额外用 PDG code 和不变质量窗口重建 K0s、Lambda、Xi、Omega。“两边结构相同”指 ROOT 输出接口和物理量定义相同，不表示 detector-level 选择步骤或 event-count 每个 cut bin 的实际含义完全相同。AMPT 当前只生成适用于 truth 输入的 charged、pion、kaon、proton 及重建 V0/级联粒子结果，不生成 detector PID 失败对应的 unidentified 结果；除 `calculate_v2ptrho.cpp` 的 truth-level track/event QA 外，也不生成依赖 detector、NUA/NUE、CCDB 等信息的 O2 QA/校正输出。
 
@@ -60,7 +63,7 @@ AMPT truth 数据没有 reconstructed `sel8`、detector PID、track-quality、NU
 
 - 四个函数的共同参数依次是 input-file JSON 路径、输出 ROOT 路径、每个 JSON entry 最多读取的文件数、最多读取的 JSON entry 数、分析配置 JSON 路径；两个数量参数为 `-1` 时表示全部处理。`calculate_c22deltapt(...)` 在分析配置路径之前额外有一个 `usePure` 参数，`calculate_flowGfwOmegaXi(...)` 与 pidFlowPtCorr 三个入口的参数顺序一致。
 - `config/cent_cfg.json` 列出 AMPT 输入路径前缀和文件数量；每个分析入口默认读取自己的 `config/<入口函数名>.json`（例如 `config/calculate_v2ptrho.json`），独立管理 flow eta subevent、独立的 mean-pT eta 范围、各粒子 pT 范围、impact-parameter 中心度转换、随机种子、Pure/POI-ref 模式以及对应入口的输出轴。修改某个任务的配置不会影响其他任务；`run_parallel.sh` 和 `submit_condor.sh` 默认按任务名选择配置，仍可显式指定自定义分析 JSON。
-- `v2_pt_rho_output`、`c22_delta_pt_output` 和 `pid_pt_correlations_output` 分别控制三个 pidFlowPtCorr 对应入口的边界策略和输出 axes。其中 `v2_pt_rho_output.axes` 控制 FlowContainer/profile 的分析轴，`v2_pt_rho_output.qa_axes.{centrality,pt,phi,eta}` 单独控制 `hCent/hPt/hPhi/hEta` QA 轴；新增或修改 v2-pT-rho QA 图时必须沿用它，并继续使用现有 uniform/variable `AxisConfig` 格式。`calculate_flowGfwOmegaXi.cpp` 的输出轴按 O2 `flowGfwOmegaXi` 默认值硬编码（charged pT 38 bins、V0/级联 pT 14 bins、中心度 10 bins、mass bins 等），以保持与 O2 输出结构完全一致；修改 O2 默认 binning 时必须同步修改该脚本。修改 binning 时要保证其 O2 对应输出及 downstream 脚本仍兼容。
+- `v2_pt_rho_output`、`c22_delta_pt_output` 和 `pid_pt_correlations_output` 分别控制三个 pidFlowPtCorr 对应入口的边界策略和输出 axes。其中 `v2_pt_rho_output.axes` 控制 FlowContainer/profile 的分析轴，`v2_pt_rho_output.qa_axes.{centrality,pt,phi,eta}` 单独控制 `hCent/hPt/hPhi/hEta` QA 轴；新增或修改 v2-pT-rho QA 图时必须沿用它，并继续使用现有 uniform/variable `AxisConfig` 格式。`calculate_flowGfwOmegaXi.cpp` 的输出轴按 O2 `flowGfwOmegaXi` 默认值硬编码（charged pT 38 bins、V0/级联 pT 14 bins、中心度 10 bins、mass bins 等），以保持与 O2 输出结构完全一致；只有用户明确要求同步时，才随 O2 默认 binning 的修改同步该脚本。修改本项目 binning 时，核对实际所用 downstream 脚本的兼容性。
 - 本分支将所需 O2Physics 类保存在 `external/o2physics/`。入口宏应从 `script/` 目录在普通 ROOT 6（支持 C++17）环境中直接运行，不要编译，也不要同时加载 O2Physics 中的同名类。
 - Condor 提交参数放在 `config/condor/submit_<任务名>_ampt.conf` 和 `submit_<任务名>_hydro.conf`，用 `submit_condor.sh <配置路径>` 显式选择；`submit_ampt.conf` 和 `submit_hydro.conf` 保留为 v2-pT-rho 的简写配置，不提供默认 `submit.conf`。配置沿用 Bash 变量格式，使用脚本提供的 `REPO_DIR` 和 `SCRIPT_DIR` 定位文件。修改提交参数时编辑配置文件。
 

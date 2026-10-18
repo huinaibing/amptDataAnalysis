@@ -175,6 +175,8 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
         makeSpeciesOutput(definition, centralityAxis, *pidNames, meanPtEdges,
                           centralityEdges, bootstrapEdges, nBootstrap));
   }
+  auto chargedMeanPtC22 = makeV2PtRhoProfile(
+      "hCharged", meanPtEdges, centralityEdges, bootstrapEdges);
 
   GFW gfw;
   CorrConfigManager manager(&gfw, config.flowEtaGap, config.flowEtaMax);
@@ -219,6 +221,12 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
             calculateCorrelation(gfw, manager, CorrType::Ref08Gap22);
         fillFlowProfile(chargedFlow, "c22", centrality, chargedGap,
                         randomValue);
+        if (chargedMoments.count > 0 && chargedGap.isPhysical())
+        {
+          chargedMeanPtC22->Fill(
+              chargedMoments.mean(), centrality, bootstrap, chargedGap.value(),
+              static_cast<double>(chargedMoments.count) * chargedGap.pairs);
+        }
         fillFlowProfile(chargedFlow, "c24", centrality,
                         calculateCorrelation(gfw, manager, CorrType::Ref0Gap24),
                         randomValue);
@@ -319,6 +327,7 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   }
 
   TDirectory *meanPtDirectory = taskDirectory->mkdir("meanptCentNbs");
+  writeObject(*meanPtDirectory, *chargedMeanPtC22);
   for (auto &output : speciesOutputs)
   {
     writeObject(*meanPtDirectory, *output.poiRef);
