@@ -119,6 +119,17 @@ inline Event::PtMoments getMeanPtMoments(const Event &event, int absPdg,
   });
 }
 
+// Independent full-eta charged sample for the additional rho denominator.
+// Keep the charged pT selection, and use an open eta interval as for GFW.
+inline Event::PtMoments getChargedPtVarianceMoments(
+    const Event &event, const AnalysisConfig &config) {
+  return event.GetPtMoments([&](const Track &track) {
+    return isChargedPdg(track.pdgPid) &&
+           std::abs(track.GetEta()) < config.v2PtRhoPtVarianceEtaMax &&
+           config.chargedPt.contains(track.GetPt(), config.strictPtBounds);
+  });
+}
+
 /**
  * Build all event-wise mean-pT samples and GFW Q-vectors in one particle pass.
  * The flow and mean-pT eta intervals remain independent.

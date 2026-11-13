@@ -50,6 +50,18 @@ namespace ampt_v2_pt_rho_macro
     return names;
   }
 
+  std::unique_ptr<TObjArray> makeChargedUnitEventProfileNames()
+  {
+    auto names = std::make_unique<TObjArray>();
+    names->SetOwner(true);
+    for (const char *name : {"c22", "c24", "c22Full", "covV2Pt", "hMeanPt",
+                             "hMeanPtFull", "ptSquareAveFull"})
+    {
+      names->Add(new TNamed(name, name));
+    }
+    return names;
+  }
+
   std::unique_ptr<TProfile3D>
   makeV2PtRhoProfile(const std::string &name,
                      const std::vector<double> &meanPtEdges,
@@ -167,6 +179,11 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   FlowContainer chargedFlow("FlowContainerCharged");
   chargedFlow.Initialize(chargedNames.get(), centralityAxis, nBootstrap);
 
+  auto chargedUnitEventNames = makeChargedUnitEventProfileNames();
+  FlowContainer chargedUnitEventFlow("FlowContainerChargedUnitEvent");
+  chargedUnitEventFlow.Initialize(chargedUnitEventNames.get(), centralityAxis,
+                                 nBootstrap);
+
   std::vector<V2PtRhoSpeciesOutput> speciesOutputs;
   speciesOutputs.reserve(speciesDefinitions().size());
   for (const auto &definition : speciesDefinitions())
@@ -227,17 +244,24 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
               chargedMoments.mean(), centrality, bootstrap, chargedGap.value(),
               static_cast<double>(chargedMoments.count) * chargedGap.pairs);
         }
-        fillFlowProfile(chargedFlow, "c24", centrality,
-                        calculateCorrelation(gfw, manager, CorrType::Ref0Gap24),
+        const CorrelationResult chargedFullFour =
+            calculateCorrelation(gfw, manager, CorrType::Ref0Gap24);
+        const CorrelationResult chargedFullTwo =
+            calculateCorrelation(gfw, manager, CorrType::Ref0Gap22);
+        fillFlowProfile(chargedFlow, "c24", centrality, chargedFullFour,
                         randomValue);
-        fillFlowProfile(chargedFlow, "c22Full", centrality,
-                        calculateCorrelation(gfw, manager, CorrType::Ref0Gap22),
+        fillFlowProfile(chargedFlow, "c22Full", centrality, chargedFullTwo,
                         randomValue);
         fillFlowMeanPtProduct(chargedFlow, "covV2Pt", centrality, chargedGap,
                               chargedMoments, randomValue);
         fillTrackWeightedFlow(chargedFlow, "c22TrackWeight", centrality,
                               chargedGap, chargedMoments, randomValue);
         fillMeanPtMoments(chargedFlow, centrality, chargedMoments, randomValue);
+
+        fillChargedRhoUnitEvent(
+            chargedUnitEventFlow, centrality, chargedGap, chargedFullTwo,
+            chargedFullFour, chargedMoments,
+            getChargedPtVarianceMoments(event, config), randomValue);
 
         for (auto &output : speciesOutputs)
         {
@@ -321,6 +345,7 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   writeObject(*taskDirectory, hEta);
   writeObject(*taskDirectory, hCent);
   writeObject(*taskDirectory, chargedFlow);
+  writeObject(*taskDirectory, chargedUnitEventFlow);
   for (auto &output : speciesOutputs)
   {
     writeObject(*taskDirectory, *output.flow);

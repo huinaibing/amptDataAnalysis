@@ -211,6 +211,49 @@ For postprocessing with plain ROOT, load
 objects. The persisted class names, versions, and output paths match O2.
 See `external/o2physics/README.md` for upstream revisions and local changes.
 
+## Additional charged rho inputs with unit event weights
+
+`calculate_v2ptrho.cpp` also writes
+`pid-flow-pt-corr/FlowContainerChargedUnitEvent`. Each valid event contributes
+weight `1` to its profiles, with the same centrality/Ncharged axis, bootstrap
+partition and per-correlator validity checks as the existing charged output.
+All original FlowContainers, profile indices, QA and `meanptCentNbs` retain
+their original filling and weights, so existing downstream macros keep using
+the original result.
+
+The new container has only these seven profiles:
+
+| Label | Per-event value |
+| --- | --- |
+| `c22` | Existing gap two-particle correlator |
+| `c24` | Existing full-flow-eta raw four-particle correlator |
+| `c22Full` | Existing full-flow-eta two-particle correlator |
+| `covV2Pt` | Gap correlator times the central event mean-pT |
+| `hMeanPt` | Central event mean-pT, with the original mean-pT eta selection |
+| `hMeanPtFull` | Event mean-pT in the independent pT-variance interval |
+| `ptSquareAveFull` | Mean product of two distinct particles' pT in that interval |
+
+The full-interval moments both require at least two selected charged tracks.
+Their eta interval is open and controlled independently by
+`v2_pt_rho_output.selection.pt_variance_abs_eta_max` (default JSON: `0.8`).
+Older custom JSON files without this key use `selection.flow_subevents.eta_max`.
+The charged pT window and pT boundary policy are shared with the original
+calculation. The central covariance pT interval is unchanged.
+
+No duplicate `c22TrackWeight` is stored: the new `c22` already supplies the
+same unit-event-weight gap average for the covariance subtraction and the
+flow variance. No duplicate `ptAveFull` is stored: on the common full-interval
+pair sample it is identical to `hMeanPtFull`. A future downstream reader can
+use `hMeanPt` for covariance centering and `hMeanPtFull` for pT-variance
+centering, while retaining the existing rho assembly. The new container
+stores inputs only; the current downstream macro is unchanged.
+
+As in the original output, the central mean-pT sample requires at least one
+track, and each flow correlator requires its own valid tuple count. The new
+output does not impose a common four-track event cut on all profiles. This
+retains the existing event selection; in sparse bins the effective event
+samples can differ between components.
+
 ## PID–charged SC inputs
 
 Run from `script/` after loading ROOT (no ACLiC compilation):

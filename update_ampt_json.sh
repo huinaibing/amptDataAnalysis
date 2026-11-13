@@ -5,8 +5,8 @@
 set -euo pipefail
 
 # ============ 可配置项 ============
-SEARCH_DIR="/home/huinaibing/new_ampt_version/"                                              # 搜索目录
-BASE_PATH="/home/huinaibing/new_ampt_version/"              # JSON 中 path 前缀
+SEARCH_DIR="/media/huinaibing/i7-13650HX/new_ampt_version/"                                              # 搜索目录
+BASE_PATH="/media/huinaibing/i7-13650HX/new_ampt_version/"              # JSON 中 path 前缀
 OUTPUT_JSON="/home/huinaibing/git_repo/amptDataAnalysis/config/cent_cfg_ampt.json"                             # 输出 JSON 路径
 # =================================
 

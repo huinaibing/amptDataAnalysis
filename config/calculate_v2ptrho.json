@@ -35,6 +35,9 @@
         "use_impact_parameter_centrality": true,
         "strict_pt_bounds": false,
         "strict_eta_bounds": false,
+        "selection": {
+            "pt_variance_abs_eta_max": 0.8
+        },
         "axes": {
             "centrality": {
                 "binning": "uniform",

@@ -61,6 +61,39 @@ inline void fillMeanPtMoments(FlowContainer &output, double centrality,
                      orderedPairs, random);
 }
 
+// Additional charged rho inputs; every valid event contributes weight 1.
+// Retain the existing per-correlator validity conditions and central-mean-pT
+// event requirement. Full pT moments share the distinct-pair sample (N >= 2).
+inline void fillChargedRhoUnitEvent(
+    FlowContainer &output, double centrality, const CorrelationResult &gap,
+    const CorrelationResult &fullTwo, const CorrelationResult &fullFour,
+    const Event::PtMoments &centralMoments,
+    const Event::PtMoments &fullMoments, double random) {
+  if (centralMoments.count == 0) {
+    return;
+  }
+  const double meanPt = centralMoments.mean();
+  output.FillProfile("hMeanPt", centrality, meanPt, 1., random);
+  if (gap.isPhysical()) {
+    output.FillProfile("c22", centrality, gap.value(), 1., random);
+    output.FillProfile("covV2Pt", centrality, gap.value() * meanPt, 1., random);
+  }
+  if (fullTwo.isPhysical()) {
+    output.FillProfile("c22Full", centrality, fullTwo.value(), 1., random);
+  }
+  if (fullFour.isPhysical()) {
+    output.FillProfile("c24", centrality, fullFour.value(), 1., random);
+  }
+  if (fullMoments.count >= 2) {
+    output.FillProfile("hMeanPtFull", centrality, fullMoments.mean(), 1., random);
+    output.FillProfile("ptSquareAveFull", centrality,
+                       fullMoments.distinctPairMean(), 1., random);
+  }
+  // No c22TrackWeight: with event weight 1 it is identical to c22.
+  // No ptAveFull: with event weight 1 on the same N >= 2 sample it is
+  // identical to hMeanPtFull. Downstream can reuse these two profiles.
+}
+
 /**
  * Fill the processData-style meanptCentNbs profiles from correlations that
  * were already calculated in the species loop.

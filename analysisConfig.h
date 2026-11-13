@@ -149,6 +149,9 @@ struct AnalysisConfig {
       {AxisBinning::Uniform, 1000, 0., 3., {}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
   bool v2PtRhoUseImpactParameterCentrality = true;
+  // Only the additional unit-event-weight charged pT variance uses this
+  // interval. The covariance keeps the existing central mean-pT sample.
+  double v2PtRhoPtVarianceEtaMax = 0.8;
   AxisConfig v2PtRhoNChargedAxis;
   AxisConfig v2PtRhoQaNChargedAxis;
   V2PtRhoQaConfig v2PtRhoQa{
@@ -555,6 +558,16 @@ inline AnalysisConfig loadAnalysisConfig(
         readOutputConfig(v2PtRhoOutput, "v2_pt_rho_output");
     config.v2PtRhoUseImpactParameterCentrality =
         v2PtRhoOutput.at("use_impact_parameter_centrality").get<bool>();
+    config.v2PtRhoPtVarianceEtaMax =
+        v2PtRhoOutput.contains("selection")
+            ? v2PtRhoOutput.at("selection").value(
+                  "pt_variance_abs_eta_max", config.flowEtaMax)
+            : config.flowEtaMax;
+    if (!std::isfinite(config.v2PtRhoPtVarianceEtaMax) ||
+        config.v2PtRhoPtVarianceEtaMax <= 0.) {
+      throw std::runtime_error(
+          "v2_pt_rho_output.selection.pt_variance_abs_eta_max must be positive and finite");
+    }
     config.v2PtRhoNChargedAxis = readAxisConfig(
         v2PtRhoOutput.at("axes").at("n_charged"),
         "v2_pt_rho_output.axes.n_charged");
