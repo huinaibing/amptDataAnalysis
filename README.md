@@ -211,6 +211,38 @@ For postprocessing with plain ROOT, load
 objects. The persisted class names, versions, and output paths match O2.
 See `external/o2physics/README.md` for upstream revisions and local changes.
 
+## Nch curve centrality for v2-pT-rho
+
+`v2_pt_rho_output.nch_centrality.enabled` selects a continuous fitted
+Nch-to-centrality curve (enabled in the supplied task JSON). It takes priority
+over `use_impact_parameter_centrality`. Switch it off to restore the original
+impact-parameter / raw-Nch behavior; older JSON files without this block also
+keep that behavior.
+
+The estimator keeps Xinli's charge table and strict
+`pt_range.min < pT < pt_range.max`, `|eta| < abs_eta_max` cuts
+(defaults: 0.2--3.0 GeV/c and 0.8), independently of the flow/QA selection.
+The `curve` block stores the `log1p_cubic` model, four coefficients in ascending
+power order and the fitted Nch range. The polynomial in `u = log1p(Nch)` is
+evaluated continuously and clipped to [0,100]. Outside `fit_nch_range`, the
+same polynomial is extrapolated. No class midpoint or threshold lookup is used.
+
+The coefficients come from `footbook/fit_cent_nch.cpp` in the ROOT workdir
+repository. That interpreted ROOT macro writes a curve JSON, a ROOT fit result,
+a PNG and a PDF. Copy its JSON object into `nch_centrality.curve` after refitting;
+the task has no runtime dependency on the separate fit output file, so parallel
+and Condor jobs use the same embedded coefficients. The supplied fit uses
+Xinli's ten fallback percentile boundary anchors (5--90%); it is a smooth
+approximation, not a new calibration of the hydro sample. Its maximum anchor
+residual is about 0.283 percentage points, and the tails are extrapolations.
+
+Both impact-parameter and curve modes use `axes.centrality` for all analysis
+profiles and the independent `qa_axes.centrality` for `hCent` (default: 1% bins,
+0--90%). Values outside the configured axes go to under/overflow, as before;
+100% is an upper-edge overflow. No event cut is added. The curve definition is
+stored as `pid-flow-pt-corr/nchCentralityCalibration` metadata. All existing
+physics objects, particle selections and filling weights are retained.
+
 ## Additional charged rho inputs with unit event weights
 
 `calculate_v2ptrho.cpp` also writes

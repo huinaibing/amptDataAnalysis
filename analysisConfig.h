@@ -82,6 +82,17 @@ struct V2PtRhoQaConfig {
   AxisConfig etaAxis;
 };
 
+struct NchCentralityConfig {
+  bool enabled = false;
+  PtRange ptRange{0.2, 3.0};
+  double absEtaMax = 0.8;
+  // C = p0 + p1*u + p2*u^2 + p3*u^3, u = log1p(Nch), clipped to [0,100].
+  // Coefficients come from the standalone fit and live in the task JSON,
+  // so local, parallel and Condor jobs share exactly the same calibration.
+  std::vector<double> coefficients;
+  std::vector<double> fitNchRange;
+};
+
 struct PtSpectraOutputConfig {
   double etaMin = -0.8;
   double etaMax = 0.8;
@@ -149,6 +160,9 @@ struct AnalysisConfig {
       {AxisBinning::Uniform, 1000, 0., 3., {}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
   bool v2PtRhoUseImpactParameterCentrality = true;
+  // When enabled, calibrated Nch percentiles take priority over the legacy
+  // impact-parameter / raw-Nch switch. Other workflows do not use this.
+  NchCentralityConfig v2PtRhoNchCentrality;
   // Additional charged pT variances (unit-event and combination-weighted)
   // use this interval. Covariance keeps the central mean-pT sample.
   double v2PtRhoPtVarianceEtaMax = 0.8;
@@ -322,6 +336,55 @@ inline V2PtRhoQaConfig readV2PtRhoQaConfig(const nlohmann::json &document,
           readAxisConfig(axes.at("pt"), name + ".pt"),
           readAxisConfig(axes.at("phi"), name + ".phi"),
           readAxisConfig(axes.at("eta"), name + ".eta")};
+}
+
+inline NchCentralityConfig
+readNchCentralityConfig(const nlohmann::json &output) {
+  NchCentralityConfig result;
+  if (output.contains("nch_centrality")) {
+    const auto &calibration = output.at("nch_centrality");
+    result.enabled = calibration.value("enabled", false);
+    result.absEtaMax = calibration.value("abs_eta_max", result.absEtaMax);
+    if (calibration.contains("pt_range")) {
+      result.ptRange = readPtRange(calibration.at("pt_range"),
+                                  "v2_pt_rho_output.nch_centrality.pt_range");
+    }
+    if (calibration.contains("curve")) {
+      const auto &curve = calibration.at("curve");
+      if (curve.at("model").get<std::string>() != "log1p_cubic") {
+        throw std::runtime_error("Nch centrality curve requires model log1p_cubic");
+      }
+      result.coefficients = curve.at("coefficients").get<std::vector<double>>();
+      result.fitNchRange = curve.at("fit_nch_range").get<std::vector<double>>();
+    } else if (result.enabled) {
+      throw std::runtime_error(
+          "Enabled nch_centrality requires a fitted curve; threshold mapping is no longer used");
+    }
+  }
+  if (!std::isfinite(result.absEtaMax) || result.absEtaMax <= 0. ||
+      !std::isfinite(result.ptRange.min) || result.ptRange.min < 0. ||
+      !std::isfinite(result.ptRange.max) ||
+      result.ptRange.max <= result.ptRange.min) {
+    throw std::runtime_error("Invalid v2_pt_rho_output.nch_centrality selection");
+  }
+  if (!result.coefficients.empty() || !result.fitNchRange.empty() || result.enabled) {
+    if (result.coefficients.size() != 4 || result.fitNchRange.size() != 2 ||
+        !std::all_of(result.coefficients.begin(), result.coefficients.end(),
+                     [](double p) { return std::isfinite(p); }) ||
+        !std::isfinite(result.fitNchRange[0]) || result.fitNchRange[0] < 0. ||
+        !std::isfinite(result.fitNchRange[1]) ||
+        result.fitNchRange[1] <= result.fitNchRange[0]) {
+      throw std::runtime_error("Invalid Nch centrality curve coefficients or fit range");
+    }
+    const auto &p = result.coefficients;
+    const double vertex = p[3] < 0. ? std::max(0., -p[2] / (3. * p[3])) : 0.;
+    if (!(p[3] < 0.) ||
+        !(p[1] + 2. * p[2] * vertex + 3. * p[3] * vertex * vertex < 0.)) {
+      throw std::runtime_error(
+          "Nch centrality curve must be monotonically decreasing for Nch >= 0");
+    }
+  }
+  return result;
 }
 
 inline PidPtCorrelationsOutputConfig
@@ -558,6 +621,7 @@ inline AnalysisConfig loadAnalysisConfig(
         readOutputConfig(v2PtRhoOutput, "v2_pt_rho_output");
     config.v2PtRhoUseImpactParameterCentrality =
         v2PtRhoOutput.at("use_impact_parameter_centrality").get<bool>();
+    config.v2PtRhoNchCentrality = readNchCentralityConfig(v2PtRhoOutput);
     config.v2PtRhoPtVarianceEtaMax =
         v2PtRhoOutput.contains("selection")
             ? v2PtRhoOutput.at("selection").value(

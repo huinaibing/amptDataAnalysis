@@ -69,6 +69,39 @@ inline double centralityFromImpactParameter(double impactParameter,
          config.centralityReferenceRadiusSquared;
 }
 
+// Use Xinli's finite charge table only for the Nch centrality estimator;
+// flow, mean-pT and QA particle selections keep their existing definitions.
+inline bool acceptsNchCentralityTrack(const Track &track,
+                                      const NchCentralityConfig &config) {
+  const double pt = track.GetPt();
+  if (!(pt > 1.e-7) || !config.ptRange.contains(pt, true) ||
+      !(std::abs(track.GetEta()) < config.absEtaMax)) {
+    return false;
+  }
+  switch (track.pdgPid < 0 ? -static_cast<long long>(track.pdgPid)
+                           : static_cast<long long>(track.pdgPid)) {
+  case 1: case 2: case 3: case 4:
+  case 211: case 213: case 321: case 323:
+  case 1114: case 2212: case 2214: case 2224:
+  case 3112: case 3114: case 3222: case 3224:
+  case 3312: case 3314: case 3334:
+    return true;
+  default:
+    return false;
+  }
+}
+
+inline double centralityFromNch(int nCharged,
+                                const NchCentralityConfig &config) {
+  if (nCharged < 0 || config.coefficients.size() != 4) {
+    throw std::invalid_argument("Nch centrality requires nonnegative Nch and four fit coefficients");
+  }
+  const double u = std::log1p(static_cast<double>(nCharged));
+  const auto &p = config.coefficients;
+  const double centrality = ((p[3] * u + p[2]) * u + p[1]) * u + p[0];
+  return std::clamp(centrality, 0., 100.);
+}
+
 /**
  * Require a known PDG particle with non-zero electric charge. Unknown codes
  * are rejected so neutral or unidentified entries cannot enter charged sums.

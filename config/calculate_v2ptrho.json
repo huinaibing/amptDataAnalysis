@@ -33,6 +33,50 @@
     },
     "v2_pt_rho_output": {
         "use_impact_parameter_centrality": true,
+        "nch_centrality": {
+            "enabled": true,
+            "pt_range": {"min": 0.2, "max": 3.0},
+            "abs_eta_max": 0.8,
+            "curve": {
+                "model": "log1p_cubic",
+                "coefficients": [
+                    115.56913214451818,
+                    -14.163686527815358,
+                    1.602848873232091,
+                    -0.20913586542876234
+                ],
+                "fit_nch_range": [
+                    8,
+                    2321
+                ],
+                "source": "Equal-weight fit to supplied Nch-percentile boundary anchors; not a sample calibration",
+                "max_abs_residual_percent": 0.28277868715707655,
+                "anchor_nch": [
+                    2321,
+                    1884,
+                    1250,
+                    800,
+                    482,
+                    268,
+                    134,
+                    59,
+                    23,
+                    8
+                ],
+                "anchor_centrality": [
+                    5,
+                    10,
+                    20,
+                    30,
+                    40,
+                    50,
+                    60,
+                    70,
+                    80,
+                    90
+                ]
+            }
+        },
         "strict_pt_bounds": false,
         "strict_eta_bounds": false,
         "selection": {

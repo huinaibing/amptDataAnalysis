@@ -142,28 +142,31 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   const auto meanPtEdges = makeAxisEdges(config.v2PtRhoOutput.meanPtAxis);
   const auto bootstrapEdges =
       makeAxisEdges(config.v2PtRhoOutput.bootstrapAxis);
+  const bool useNchCentrality = config.v2PtRhoNchCentrality.enabled;
+  const bool usePercentileCentrality =
+      useNchCentrality || config.v2PtRhoUseImpactParameterCentrality;
   const auto centralityEdges = makeAxisEdges(
-      config.v2PtRhoUseImpactParameterCentrality
-          ? config.v2PtRhoOutput.centralityAxis
-          : config.v2PtRhoNChargedAxis);
+      usePercentileCentrality ? config.v2PtRhoOutput.centralityAxis
+                              : config.v2PtRhoNChargedAxis);
   const int nBootstrap = axisBinCount(config.v2PtRhoOutput.bootstrapAxis);
   const o2::framework::AxisSpec centralityAxis{centralityEdges,
-      config.v2PtRhoUseImpactParameterCentrality ? "Centrality (%)"
-                                                 : "N_{charged}"};
+      usePercentileCentrality ? "Centrality (%)" : "N_{charged}"};
   const auto qaCentralityEdges = makeAxisEdges(
-      config.v2PtRhoUseImpactParameterCentrality
-          ? config.v2PtRhoQa.centralityAxis
-          : config.v2PtRhoQaNChargedAxis);
+      usePercentileCentrality ? config.v2PtRhoQa.centralityAxis
+                              : config.v2PtRhoQaNChargedAxis);
   const auto qaPtEdges = makeAxisEdges(config.v2PtRhoQa.ptAxis);
   const auto qaPhiEdges = makeAxisEdges(config.v2PtRhoQa.phiAxis);
   const auto qaEtaEdges = makeAxisEdges(config.v2PtRhoQa.etaAxis);
 
   TH1D hCent("hCent",
-             config.v2PtRhoUseImpactParameterCentrality
-                 ? "Event centrality distribution (AMPT impact parameter);"
+             useNchCentrality
+                 ? "Event centrality distribution (Nch fitted curve);"
                    "Centrality (%);Events"
-                 : "Charged-particle multiplicity distribution;"
-                   "N_{charged};Events",
+                 : (config.v2PtRhoUseImpactParameterCentrality
+                        ? "Event centrality distribution (AMPT impact parameter);"
+                          "Centrality (%);Events"
+                        : "Charged-particle multiplicity distribution;"
+                          "N_{charged};Events"),
              static_cast<int>(qaCentralityEdges.size()) - 1,
              qaCentralityEdges.data());
   TH1D hPt("hPt", "Track p_{T} distribution;p_{T} (GeV/#it{c});Tracks",
@@ -214,8 +217,14 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
             fillGfwAndCollectSamples(gfw, event, config);
 
         int nCharged = 0;
+        int nChargedForCentrality = 0;
         for (const auto &track : event.particles)
         {
+          if (useNchCentrality &&
+              acceptsNchCentralityTrack(track, config.v2PtRhoNchCentrality))
+          {
+            ++nChargedForCentrality;
+          }
           if (!acceptsFlowTrack(track, config))
           {
             continue;
@@ -226,10 +235,13 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
           hEta.Fill(track.GetEta());
           hPt.Fill(track.GetPt());
         }
-        const double centrality = config.v2PtRhoUseImpactParameterCentrality
-                                      ? centralityFromImpactParameter(event.imp,
-                                                                      config)
-                                      : static_cast<double>(nCharged);
+        const double centrality =
+            useNchCentrality
+                ? centralityFromNch(nChargedForCentrality,
+                                    config.v2PtRhoNchCentrality)
+                : (config.v2PtRhoUseImpactParameterCentrality
+                       ? centralityFromImpactParameter(event.imp, config)
+                       : static_cast<double>(nCharged));
         hCent.Fill(centrality);
         const double randomValue = bootstrapRandomValue(config.randomSeed, identity);
         const double bootstrap =
@@ -354,6 +366,18 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
   }
 
   TDirectory *taskDirectory = outputFileHandle.mkdir("pid-flow-pt-corr");
+  if (useNchCentrality)
+  {
+    const auto &calibration = config.v2PtRhoNchCentrality;
+    const nlohmann::json metadata = {
+        {"model", "log1p_cubic"}, {"coefficients", calibration.coefficients},
+        {"fit_nch_range", calibration.fitNchRange},
+        {"pt_range", {calibration.ptRange.min, calibration.ptRange.max}},
+        {"abs_eta_max", calibration.absEtaMax},
+        {"tails", "extrapolate polynomial, then clip to [0,100]"}};
+    TNamed centralityCalibration("nchCentralityCalibration", metadata.dump().c_str());
+    writeObject(*taskDirectory, centralityCalibration);
+  }
   writeObject(*taskDirectory, hPt);
   writeObject(*taskDirectory, hPhi);
   writeObject(*taskDirectory, hEta);
