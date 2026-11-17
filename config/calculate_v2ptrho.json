@@ -34,7 +34,7 @@
     "v2_pt_rho_output": {
         "use_impact_parameter_centrality": true,
         "nch_centrality": {
-            "enabled": true,
+            "enabled": false,
             "pt_range": {"min": 0.2, "max": 3.0},
             "abs_eta_max": 0.8,
             "curve": {
@@ -80,7 +80,8 @@
         "strict_pt_bounds": false,
         "strict_eta_bounds": false,
         "selection": {
-            "pt_variance_abs_eta_max": 0.8
+            "pt_variance_abs_eta_max": 0.8,
+            "xinli_event_selection": true
         },
         "axes": {
             "centrality": {

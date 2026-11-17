@@ -214,10 +214,12 @@ See `external/o2physics/README.md` for upstream revisions and local changes.
 ## Nch curve centrality for v2-pT-rho
 
 `v2_pt_rho_output.nch_centrality.enabled` selects a continuous fitted
-Nch-to-centrality curve (enabled in the supplied task JSON). It takes priority
+Nch-to-centrality curve (disabled in the supplied task JSON). It takes priority
 over `use_impact_parameter_centrality`. Switch it off to restore the original
 impact-parameter / raw-Nch behavior; older JSON files without this block also
 keep that behavior.
+The supplied JSON currently uses `use_impact_parameter_centrality=true` and
+`nch_centrality.enabled=false`, selecting the original impact-parameter mapping.
 
 The estimator keeps Xinli's charge table and strict
 `pt_range.min < pT < pt_range.max`, `|eta| < abs_eta_max` cuts
@@ -248,10 +250,10 @@ physics objects, particle selections and filling weights are retained.
 `calculate_v2ptrho.cpp` also writes
 `pid-flow-pt-corr/FlowContainerChargedUnitEvent`. Each valid event contributes
 weight `1` to its profiles, with the same centrality/Ncharged axis, bootstrap
-partition and per-correlator validity checks as the existing charged output.
-All original FlowContainers, profile indices, QA and `meanptCentNbs` retain
-their original filling and weights, so existing downstream macros keep using
-the original result.
+partition. It retains its original per-correlator validity checks.
+All FlowContainer names and profile indices are retained. The unit-event
+container keeps its original filling; the combination-weighted comparison
+inputs in `FlowContainerCharged` use the event conditions described below.
 
 The new container has only these seven profiles:
 
@@ -285,6 +287,20 @@ track, and each flow correlator requires its own valid tuple count. The new
 output does not impose a common four-track event cut on all profiles. This
 retains the existing event selection; in sparse bins the effective event
 samples can differ between components.
+
+The nine weighted comparison inputs (`covV2Pt`, `c22TrackWeight`, `hMeanPt`,
+`hMeanPtFull`, `ptAveFull`, `ptSquareAveFull`, `c22Full`, `c24`, `c22Gap0`)
+require `N_F>=3`, `N_A>0`, `N_B>1`, `N_C>0`, excluding `N_A=N_C=1`.
+Full two and gap0 additionally require nonempty negative/positive eta halves;
+full four requires more than one track in each half. Counts follow the
+existing GFW open eta regions; B keeps the existing central mean-pT selection.
+This does not change eta boundaries, `isPhysical()` checks, bootstrap grouping,
+or profile weights. The unit-event container, other charged profiles, PID,
+QA and `meanptCentNbs` keep their existing filling rules.
+These comparison gates are enabled by
+`v2_pt_rho_output.selection.xinli_event_selection=true` in the supplied JSON
+(also the default if omitted). Setting it to false restores the previous
+comparison-input event conditions.
 
 ## PID–charged SC inputs
 

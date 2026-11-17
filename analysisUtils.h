@@ -28,9 +28,23 @@ struct CorrelationResult {
   bool isPhysical() const { return hasPairs() && std::abs(value()) < 1.; }
 };
 
+struct ChargedRhoCounts {
+  std::size_t full = 0;
+  std::size_t negativeGap = 0;
+  std::size_t positiveGap = 0;
+  std::size_t negativeHalf = 0;
+  std::size_t positiveHalf = 0;
+
+  bool accepts(std::size_t central) const {
+    return full >= 3 && negativeGap > 0 && central > 1 && positiveGap > 0 &&
+           !(negativeGap == 1 && positiveGap == 1);
+  }
+};
+
 struct EventSamples {
   Event::PtMoments charged;
   std::array<Event::PtMoments, 3> pid;
+  ChargedRhoCounts chargedRhoCounts;
 
   const Event::PtMoments &forSpecies(Species species) const {
     return pid.at(static_cast<std::size_t>(species));
@@ -200,6 +214,24 @@ inline EventSamples fillGfwAndCollectSamples(GFW &gfw, const Event &event,
 
     if (isCharged && config.chargedPt.contains(pt, config.strictPtBounds)) {
       gfw.Fill(eta, 0, track.GetPhi(), 1., Mask::kRef);
+      // Count the actual open GFW reference regions. Keep the existing
+      // mean-pT, particle-selection and eta-boundary policies unchanged.
+      if (std::abs(eta) < config.flowEtaMax) {
+        auto &counts = samples.chargedRhoCounts;
+        ++counts.full;
+        if (eta < -config.flowEtaGap) {
+          ++counts.negativeGap;
+        }
+        if (eta > config.flowEtaGap) {
+          ++counts.positiveGap;
+        }
+        if (eta < 0.) {
+          ++counts.negativeHalf;
+        }
+        if (eta > 0.) {
+          ++counts.positiveHalf;
+        }
+      }
     }
     if (isCharged && species &&
         ptRangeForPdg(absPdg, config).contains(pt, config.strictPtBounds)) {

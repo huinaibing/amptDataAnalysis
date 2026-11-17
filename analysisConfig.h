@@ -166,6 +166,7 @@ struct AnalysisConfig {
   // Additional charged pT variances (unit-event and combination-weighted)
   // use this interval. Covariance keeps the central mean-pT sample.
   double v2PtRhoPtVarianceEtaMax = 0.8;
+  bool v2PtRhoUseXinliEventSelection = true;
   AxisConfig v2PtRhoNChargedAxis;
   AxisConfig v2PtRhoQaNChargedAxis;
   V2PtRhoQaConfig v2PtRhoQa{
@@ -627,6 +628,10 @@ inline AnalysisConfig loadAnalysisConfig(
             ? v2PtRhoOutput.at("selection").value(
                   "pt_variance_abs_eta_max", config.flowEtaMax)
             : config.flowEtaMax;
+    config.v2PtRhoUseXinliEventSelection =
+        v2PtRhoOutput.contains("selection")
+            ? v2PtRhoOutput.at("selection").value("xinli_event_selection", true)
+            : true;
     if (!std::isfinite(config.v2PtRhoPtVarianceEtaMax) ||
         config.v2PtRhoPtVarianceEtaMax <= 0.) {
       throw std::runtime_error(

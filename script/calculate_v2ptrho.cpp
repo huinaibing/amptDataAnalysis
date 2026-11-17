@@ -266,24 +266,17 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
             calculateCorrelation(gfw, manager, CorrType::Ref0Gap24);
         const CorrelationResult chargedFullTwo =
             calculateCorrelation(gfw, manager, CorrType::Ref0Gap22);
-        fillFlowProfile(chargedFlow, "c24", centrality, chargedFullFour,
-                        randomValue);
-        fillFlowProfile(chargedFlow, "c22Full", centrality, chargedFullTwo,
-                        randomValue);
-        fillFlowMeanPtProduct(chargedFlow, "covV2Pt", centrality, chargedGap,
-                              chargedMoments, randomValue);
-        fillTrackWeightedFlow(chargedFlow, "c22TrackWeight", centrality,
-                              chargedGap, chargedMoments, randomValue);
-        fillMeanPtMoments(chargedFlow, centrality, chargedMoments, randomValue);
+        // Preserve the original central-pT pair profiles; hMeanPt belongs
+        // to the comparison inputs and is filled under their common gate.
+        fillPtPairMoments(chargedFlow, centrality, chargedMoments, randomValue);
 
         const Event::PtMoments fullMoments =
             getChargedPtVarianceMoments(event, config);
-        fillChargedRhoWeightedPtMoments(chargedFlow, centrality, fullMoments,
-                                       randomValue);
-        fillFlowProfile(
-            chargedFlow, "c22Gap0", centrality,
+        fillChargedRhoWeightedInputs(
+            chargedFlow, centrality, chargedGap, chargedFullTwo, chargedFullFour,
             calculateCorrelation(gfw, manager, CorrType::RefHalfGap22),
-            randomValue);
+            chargedMoments, fullMoments, samples.chargedRhoCounts, randomValue,
+            config.v2PtRhoUseXinliEventSelection);
 
         fillChargedRhoUnitEvent(
             chargedUnitEventFlow, centrality, chargedGap, chargedFullTwo,

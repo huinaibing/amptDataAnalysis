@@ -43,22 +43,27 @@ inline void fillTrackWeightedFlow(FlowContainer &output,
   }
 }
 
+inline void fillPtPairMoments(FlowContainer &output, double centrality,
+                              const Event::PtMoments &moments, double random) {
+  if (moments.count < 2) {
+    return;
+  }
+
+  const double count = static_cast<double>(moments.count);
+  const double orderedPairs = count * (count - 1.);
+  output.FillProfile("ptAve", centrality, moments.mean(), orderedPairs, random);
+  output.FillProfile("ptSquareAve", centrality, moments.distinctPairMean(),
+                     orderedPairs, random);
+}
+
 inline void fillMeanPtMoments(FlowContainer &output, double centrality,
                               const Event::PtMoments &moments, double random) {
   if (moments.count == 0) {
     return;
   }
-
-  const double count = static_cast<double>(moments.count);
-  output.FillProfile("hMeanPt", centrality, moments.mean(), count, random);
-  if (moments.count < 2) {
-    return;
-  }
-
-  const double orderedPairs = count * (count - 1.);
-  output.FillProfile("ptAve", centrality, moments.mean(), orderedPairs, random);
-  output.FillProfile("ptSquareAve", centrality, moments.distinctPairMean(),
-                     orderedPairs, random);
+  output.FillProfile("hMeanPt", centrality, moments.mean(),
+                     static_cast<double>(moments.count), random);
+  fillPtPairMoments(output, centrality, moments, random);
 }
 
 // Additional charged rho inputs; every valid event contributes weight 1.
@@ -113,6 +118,37 @@ inline void fillChargedRhoWeightedPtMoments(
                      random);
   output.FillProfile("ptSquareAveFull", centrality,
                      fullMoments.distinctPairMean(), orderedPairs, random);
+}
+
+// The nine combination-weighted rho inputs share Xinli's event gate.
+// Other charged profiles, the unit-event container and PID retain their
+// existing samples. CorrelationResult::isPhysical() is unchanged here.
+inline void fillChargedRhoWeightedInputs(
+    FlowContainer &output, double centrality, const CorrelationResult &gap,
+    const CorrelationResult &fullTwo, const CorrelationResult &fullFour,
+    const CorrelationResult &halfGap, const Event::PtMoments &centralMoments,
+    const Event::PtMoments &fullMoments, const ChargedRhoCounts &counts,
+    double random, bool useXinliEventSelection = true) {
+  if (centralMoments.count == 0 ||
+      (useXinliEventSelection && !counts.accepts(centralMoments.count))) {
+    return;
+  }
+  fillFlowMeanPtProduct(output, "covV2Pt", centrality, gap, centralMoments,
+                       random);
+  fillTrackWeightedFlow(output, "c22TrackWeight", centrality, gap,
+                        centralMoments, random);
+  output.FillProfile("hMeanPt", centrality, centralMoments.mean(),
+                     static_cast<double>(centralMoments.count), random);
+  fillChargedRhoWeightedPtMoments(output, centrality, fullMoments, random);
+  if (!useXinliEventSelection ||
+      (counts.negativeHalf > 0 && counts.positiveHalf > 0)) {
+    fillFlowProfile(output, "c22Full", centrality, fullTwo, random);
+    fillFlowProfile(output, "c22Gap0", centrality, halfGap, random);
+  }
+  if (!useXinliEventSelection ||
+      (counts.negativeHalf > 1 && counts.positiveHalf > 1)) {
+    fillFlowProfile(output, "c24", centrality, fullFour, random);
+  }
 }
 
 /**

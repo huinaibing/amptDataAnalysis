@@ -25,8 +25,8 @@ void test_v2ptrho_nch_centrality(
   using namespace ampt_analysis;
   using namespace ampt_nch_centrality_test;
   const auto config = loadAnalysisConfig(configFile, "v2_pt_rho_output");
+  // Exercise the optional curve independently of the shipped default mode.
   const auto &calibration = config.v2PtRhoNchCentrality;
-  require(calibration.enabled, "The supplied config must enable the fitted curve");
 
   const int anchors[]{2321, 1884, 1250, 800, 482, 268, 134, 59, 23, 8};
   const double percentiles[]{5, 10, 20, 30, 40, 50, 60, 70, 80, 90};
@@ -81,6 +81,7 @@ void test_v2ptrho_nch_centrality(
           "Old configs must keep the new mode disabled");
 
   auto custom = document.at("v2_pt_rho_output");
+  custom["nch_centrality"]["enabled"] = true;
   custom["nch_centrality"]["curve"]["coefficients"][0] = 116.;
   const auto customConfig = readNchCentralityConfig(custom);
   require(customConfig.enabled && customConfig.coefficients[0] == 116.,
