@@ -5,6 +5,7 @@
 
 #include <array>
 #include <fstream>
+#include <limits>
 
 namespace ampt_rho_event_selection_test {
 void require(bool ok, const char *message) {
@@ -46,7 +47,9 @@ void test_v2ptrho_event_selection(
       {1, 1, 0, 0, 1}, {1, 1, 0, 1, 1}, {2, 2, 0, 0, 1},
       {1, 0, 0, 2, 2}, {1, 1, 0, 1, 2}, {0, 2, 0, 1, 2},
       {2, 2, 0, 1, 0}, {2, 1, 0, 1, 2}, {2, 0, 0, 0, 2},
-      {0, 1, 0, 0, 1}, {2, 0, 2, 0, 1}, {1, 0, 2, 0, 2}};
+      {0, 1, 0, 0, 1}, {2, 0, 2, 0, 1}, {1, 0, 2, 0, 2},
+      {2, 1, 0, 1, 2}};
+  const std::size_t alignedEvent = events.size() - 1;
   const std::string dir = "/tmp/v2ptrho_event_selection_test";
   gSystem->mkdir(dir.c_str(), true);
   {
@@ -70,7 +73,7 @@ void test_v2ptrho_event_selection(
       for (int region = 0; region < 5; ++region) {
         for (int i = 0; i < events[event][region]; ++i, ++track) {
           const double pt = 0.5 + 0.1 * track;
-          const double phi = 0.27 + 0.59 * track;
+          const double phi = event == alignedEvent ? 0. : 0.27 + 0.59 * track;
           px = pt * std::cos(phi);
           py = pt * std::sin(phi);
           pz = pt * std::sinh(eta[region]);
@@ -124,6 +127,11 @@ void test_v2ptrho_event_selection(
       auto &profile = *charged->GetProfile();
       const int y = labelBin(profile, labels[i]);
       near(profile.GetBinEntries(profile.GetBin(x, y)), weights[i], labels[i]);
+      if (event == alignedEvent &&
+          (i == 1 || i == 6 || i == 7 || i == 8)) {
+        near(profile.GetBinContent(profile.GetBin(x, y)), 1.,
+             "Comparison must retain exactly aligned correlators equal to 1");
+      }
       double subsampleWeight = 0.;
       for (auto *object : *charged->GetSubProfiles()) {
         auto &sub = *static_cast<TProfile2D *>(object);
@@ -137,17 +145,77 @@ void test_v2ptrho_event_selection(
     near(old.GetBinEntries(old.GetBin(x, labelBin(old, "ptAve"))),
          b > 1 ? b * (b - 1.) : 0., "Central pair profile changed");
     near(old.GetBinEntries(old.GetBin(x, labelBin(old, "c22"))),
-         b > 0 ? a * c : 0., "Original charged gap sample changed");
+         b > 0 && event != alignedEvent ? a * c : 0.,
+         "Original charged gap sample changed");
     auto &u = *unit->GetProfile();
     near(u.GetBinEntries(u.GetBin(x, labelBin(u, "hMeanPt"))),
          b > 0 ? 1. : 0., "Unit-event branch acquired the comparison gate");
     near(u.GetBinEntries(u.GetBin(x, labelBin(u, "c24"))),
-         b > 0 && n >= 4 ? 1. : 0., "Unit-event full four acquired the half cut");
+         b > 0 && n >= 4 && event != alignedEvent ? 1. : 0.,
+         "Unit-event full four acquired the half cut or lost its physical cut");
     auto &pi = *pion->GetProfile();
     near(pi.GetBinEntries(pi.GetBin(x, labelBin(pi, "hMeanPt"))), b,
          "PID branch acquired the comparison gate");
   }
+
+  // Exercise invalid numerical inputs directly; real unit-weight Q-vectors
+  // also cover the exactly-one boundary above through the full workflow.
+  auto names = ampt_v2_pt_rho_macro::makeChargedProfileNames();
+  for (const char *name : {"hMeanPtFull", "ptAveFull", "ptSquareAveFull", "c22Gap0"})
+    names->Add(new TNamed(name, name));
+  FlowContainer numerical("weightedValidityTest");
+  numerical.Initialize(names.get(), 90, 0., 90., 2);
+  const double inf = std::numeric_limits<double>::infinity();
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  struct Case {
+    CorrelationResult correlation;
+    bool flow, triplet;
+  };
+  const std::vector<Case> cases{
+      {{1., 1.}, true, true}, {{-1., 1.}, true, true},
+      {{1.2, 1.}, true, true}, {{-1.2, 1.}, true, true},
+      {{0., 1.}, true, true}, {{1., 0.}, false, false},
+      {{1., -1.}, false, false}, {{nan, 1.}, false, false},
+      {{inf, 1.}, false, false}, {{1., inf}, false, false},
+      {{1., nan}, false, false}, {{1.e308, 1.e-308}, false, false},
+      {{1.e308, 1.e308}, true, false}};
+  const Event::PtMoments central{2, 2., 2.};
+  const Event::PtMoments full{6, 6., 6.};
+  const ChargedRhoCounts counts{6, 2, 2, 3, 3};
+  for (std::size_t i = 0; i < cases.size(); ++i) {
+    const auto &c = cases[i];
+    fillChargedRhoWeightedInputs(numerical, i + 0.5, c.correlation,
+        c.correlation, c.correlation, c.correlation, central, full, counts, 0.25);
+    for (const char *label : {"covV2Pt", "c22TrackWeight", "c22Full", "c24", "c22Gap0"}) {
+      const bool triplet = std::string(label) == "covV2Pt" ||
+                           std::string(label) == "c22TrackWeight";
+      const bool valid = triplet ? c.triplet : c.flow;
+      const double weight = valid ? c.correlation.pairs * (triplet ? 2. : 1.) : 0.;
+      auto check = [&](const TProfile2D &p) {
+        const int bin = p.GetBin(i + 1, labelBin(p, label));
+        near(p.GetBinEntries(bin), weight, "Wrong numerical validity or weight");
+        if (valid)
+          near(p.GetBinContent(bin), c.correlation.value(), "Finite value was clipped");
+      };
+      check(*numerical.GetProfile());
+      check(*static_cast<TProfile2D *>(numerical.GetSubProfiles()->At(0)));
+    }
+    auto &p = *numerical.GetProfile();
+    near(p.GetBinEntries(p.GetBin(i + 1, labelBin(p, "hMeanPt"))), 2.,
+         "An invalid correlator must not reject independent mean-pT inputs");
+  }
+  // Nonfinite mean-pT/product values must not enter their profiles, while
+  // finite flow and other independent moments can still be filled.
+  fillChargedRhoWeightedInputs(numerical, 80.5, {1., 1.}, {1., 1.},
+      {1., 1.}, {1., 1.}, {2, inf, inf}, {6, 6., inf}, counts, 0.25);
+  auto &p = *numerical.GetProfile();
+  for (const char *label : {"covV2Pt", "hMeanPt", "ptSquareAveFull"})
+    near(p.GetBinEntries(p.GetBin(81, labelBin(p, label))), 0.,
+         "Nonfinite pT input entered a profile");
+  near(p.GetBinEntries(p.GetBin(81, labelBin(p, "c22TrackWeight"))), 2.,
+       "Finite independent flow input was rejected");
   std::cout << "PASS: comparison event gates, half-eta four-particle cut, "
+               "positive finite denominators and finite values without abs cut, "
                "bootstrap weights, unchanged unit/PID/other charged profiles, "
                "legacy imp centrality and output compatibility.\n";
 }

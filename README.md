@@ -294,13 +294,17 @@ require `N_F>=3`, `N_A>0`, `N_B>1`, `N_C>0`, excluding `N_A=N_C=1`.
 Full two and gap0 additionally require nonempty negative/positive eta halves;
 full four requires more than one track in each half. Counts follow the
 existing GFW open eta regions; B keeps the existing central mean-pT selection.
-This does not change eta boundaries, `isPhysical()` checks, bootstrap grouping,
-or profile weights. The unit-event container, other charged profiles, PID,
+The comparison correlators require a positive, finite combination denominator
+and a finite ratio; all nine inputs require finite fill values and positive,
+finite weights. No `abs(value)<1` cut is applied to these comparison inputs,
+so finite values equal to +/-1 are retained. Eta boundaries, bootstrap grouping
+and profile weights are unchanged. The unit-event container, other charged profiles, PID,
 QA and `meanptCentNbs` keep their existing filling rules.
 These comparison gates are enabled by
 `v2_pt_rho_output.selection.xinli_event_selection=true` in the supplied JSON
 (also the default if omitted). Setting it to false restores the previous
-comparison-input event conditions.
+comparison-input event conditions; the comparison validity rule above remains
+in effect. Shared `CorrelationResult::isPhysical()` is unchanged.
 
 ## PID–charged SC inputs
 

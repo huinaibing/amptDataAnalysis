@@ -99,6 +99,16 @@ inline void fillChargedRhoUnitEvent(
   // identical to hMeanPtFull. Downstream can reuse these two profiles.
 }
 
+// Only the weighted comparison branch uses this validity rule. In particular,
+// finite correlators equal to +/-1 are retained without an absolute-value cut.
+inline void fillChargedRhoWeightedValue(
+    FlowContainer &output, const char *profileName, double centrality,
+    double value, double weight, double random) {
+  if (weight > 0. && std::isfinite(weight) && std::isfinite(value)) {
+    output.FillProfile(profileName, centrality, value, weight, random);
+  }
+}
+
 // Combination-weighted full-eta pT inputs. Existing charged c22Full/c24
 // already carry their own pair/quadruplet weights; do not duplicate them.
 inline void fillChargedRhoWeightedPtMoments(
@@ -108,21 +118,22 @@ inline void fillChargedRhoWeightedPtMoments(
     return;
   }
   const double count = static_cast<double>(fullMoments.count);
-  output.FillProfile("hMeanPtFull", centrality, fullMoments.mean(), count,
-                     random);
+  fillChargedRhoWeightedValue(output, "hMeanPtFull", centrality,
+                              fullMoments.mean(), count, random);
   if (fullMoments.count < 2) {
     return;
   }
   const double orderedPairs = count * (count - 1.);
-  output.FillProfile("ptAveFull", centrality, fullMoments.mean(), orderedPairs,
-                     random);
-  output.FillProfile("ptSquareAveFull", centrality,
-                     fullMoments.distinctPairMean(), orderedPairs, random);
+  fillChargedRhoWeightedValue(output, "ptAveFull", centrality,
+                              fullMoments.mean(), orderedPairs, random);
+  fillChargedRhoWeightedValue(output, "ptSquareAveFull", centrality,
+                              fullMoments.distinctPairMean(), orderedPairs,
+                              random);
 }
 
 // The nine combination-weighted rho inputs share Xinli's event gate.
 // Other charged profiles, the unit-event container and PID retain their
-// existing samples. CorrelationResult::isPhysical() is unchanged here.
+// existing samples and shared CorrelationResult::isPhysical() checks.
 inline void fillChargedRhoWeightedInputs(
     FlowContainer &output, double centrality, const CorrelationResult &gap,
     const CorrelationResult &fullTwo, const CorrelationResult &fullFour,
@@ -133,21 +144,35 @@ inline void fillChargedRhoWeightedInputs(
       (useXinliEventSelection && !counts.accepts(centralMoments.count))) {
     return;
   }
-  fillFlowMeanPtProduct(output, "covV2Pt", centrality, gap, centralMoments,
-                       random);
-  fillTrackWeightedFlow(output, "c22TrackWeight", centrality, gap,
-                        centralMoments, random);
-  output.FillProfile("hMeanPt", centrality, centralMoments.mean(),
-                     static_cast<double>(centralMoments.count), random);
+  const auto fillCorrelation = [&](const char *name,
+                                   const CorrelationResult &correlation,
+                                   double valueFactor = 1.,
+                                   double weightFactor = 1.) {
+    if (!(correlation.pairs > 0.) || !std::isfinite(correlation.pairs)) {
+      return;
+    }
+    const double value = correlation.value();
+    if (!std::isfinite(value)) {
+      return;
+    }
+    fillChargedRhoWeightedValue(output, name, centrality, value * valueFactor,
+                                correlation.pairs * weightFactor, random);
+  };
+  const double count = static_cast<double>(centralMoments.count);
+  const double meanPt = centralMoments.mean();
+  fillCorrelation("covV2Pt", gap, meanPt, count);
+  fillCorrelation("c22TrackWeight", gap, 1., count);
+  fillChargedRhoWeightedValue(output, "hMeanPt", centrality, meanPt, count,
+                              random);
   fillChargedRhoWeightedPtMoments(output, centrality, fullMoments, random);
   if (!useXinliEventSelection ||
       (counts.negativeHalf > 0 && counts.positiveHalf > 0)) {
-    fillFlowProfile(output, "c22Full", centrality, fullTwo, random);
-    fillFlowProfile(output, "c22Gap0", centrality, halfGap, random);
+    fillCorrelation("c22Full", fullTwo);
+    fillCorrelation("c22Gap0", halfGap);
   }
   if (!useXinliEventSelection ||
       (counts.negativeHalf > 1 && counts.positiveHalf > 1)) {
-    fillFlowProfile(output, "c24", centrality, fullFour, random);
+    fillCorrelation("c24", fullFour);
   }
 }
 
