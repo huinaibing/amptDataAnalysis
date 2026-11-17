@@ -175,6 +175,12 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
 
   auto chargedNames = makeChargedProfileNames();
   auto pidNames = makePidProfileNames(*chargedNames);
+  // Append only to charged output, after cloning the existing PID labels.
+  for (const char *name : {"hMeanPtFull", "ptAveFull", "ptSquareAveFull",
+                           "c22Gap0"})
+  {
+    chargedNames->Add(new TNamed(name, name));
+  }
 
   FlowContainer chargedFlow("FlowContainerCharged");
   chargedFlow.Initialize(chargedNames.get(), centralityAxis, nBootstrap);
@@ -258,10 +264,18 @@ void calculate_v2ptrho(const char *inputConfigFile = "../config/cent_cfg.json",
                               chargedGap, chargedMoments, randomValue);
         fillMeanPtMoments(chargedFlow, centrality, chargedMoments, randomValue);
 
+        const Event::PtMoments fullMoments =
+            getChargedPtVarianceMoments(event, config);
+        fillChargedRhoWeightedPtMoments(chargedFlow, centrality, fullMoments,
+                                       randomValue);
+        fillFlowProfile(
+            chargedFlow, "c22Gap0", centrality,
+            calculateCorrelation(gfw, manager, CorrType::RefHalfGap22),
+            randomValue);
+
         fillChargedRhoUnitEvent(
             chargedUnitEventFlow, centrality, chargedGap, chargedFullTwo,
-            chargedFullFour, chargedMoments,
-            getChargedPtVarianceMoments(event, config), randomValue);
+            chargedFullFour, chargedMoments, fullMoments, randomValue);
 
         for (auto &output : speciesOutputs)
         {

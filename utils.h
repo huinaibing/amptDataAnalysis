@@ -94,6 +94,27 @@ inline void fillChargedRhoUnitEvent(
   // identical to hMeanPtFull. Downstream can reuse these two profiles.
 }
 
+// Combination-weighted full-eta pT inputs. Existing charged c22Full/c24
+// already carry their own pair/quadruplet weights; do not duplicate them.
+inline void fillChargedRhoWeightedPtMoments(
+    FlowContainer &output, double centrality,
+    const Event::PtMoments &fullMoments, double random) {
+  if (fullMoments.count == 0) {
+    return;
+  }
+  const double count = static_cast<double>(fullMoments.count);
+  output.FillProfile("hMeanPtFull", centrality, fullMoments.mean(), count,
+                     random);
+  if (fullMoments.count < 2) {
+    return;
+  }
+  const double orderedPairs = count * (count - 1.);
+  output.FillProfile("ptAveFull", centrality, fullMoments.mean(), orderedPairs,
+                     random);
+  output.FillProfile("ptSquareAveFull", centrality,
+                     fullMoments.distinctPairMean(), orderedPairs, random);
+}
+
 /**
  * Fill the processData-style meanptCentNbs profiles from correlations that
  * were already calculated in the species loop.

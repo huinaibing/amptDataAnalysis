@@ -94,6 +94,9 @@ enum class CorrType {
   KaKaFull22,
   PrPrFull22,
 
+  // Charged zero-gap two-subevent term for the rho flow variance.
+  RefHalfGap22,
+
   kTotal // 标记总数，不要删
 };
 
@@ -337,6 +340,8 @@ private:
          2},
         {CorrType::PrPrFull22, "poiPrFull {2 -2}", "PrPrFull22", P::kPr,
          2},
+        {CorrType::RefHalfGap22, "refP {2} refN {-2}", "RefHalfGap22",
+         P::kRef, 2},
     };
 
     // 自动生成 corrconfigs 和 name map

@@ -149,8 +149,8 @@ struct AnalysisConfig {
       {AxisBinning::Uniform, 1000, 0., 3., {}},
       {AxisBinning::Uniform, 30, 0., 30., {}}};
   bool v2PtRhoUseImpactParameterCentrality = true;
-  // Only the additional unit-event-weight charged pT variance uses this
-  // interval. The covariance keeps the existing central mean-pT sample.
+  // Additional charged pT variances (unit-event and combination-weighted)
+  // use this interval. Covariance keeps the central mean-pT sample.
   double v2PtRhoPtVarianceEtaMax = 0.8;
   AxisConfig v2PtRhoNChargedAxis;
   AxisConfig v2PtRhoQaNChargedAxis;
